@@ -28,6 +28,13 @@ Prueba el complemento funcionando en tiempo real directamente en tu navegador we
 
 *(Incluye simulación completa de la cuadrícula de Excel, selector de tablas, búsqueda y alta de registros con cálculo de fórmulas en vivo).*
 
+## ⚡ Importación Instantánea en Script Lab (Gist Oficial)
+
+Puedes importar y ejecutar este add-in directamente en tu Excel en 1 solo clic pegando el Gist oficial en Script Lab:
+
+👉 **[Abrir Gist Oficial de Script Lab](https://gist.github.com/intef-dev/f5bb844d81eae511c3fe010a1bbfc63d)**  
+*ID de importación:* `f5bb844d81eae511c3fe010a1bbfc63d`
+
 ---
 
 ## 📥 Descarga Rápida del Proyecto (ZIP)
@@ -64,13 +71,31 @@ Si prefieres descargar todo el código y la plantilla de Excel en un solo archiv
 
 ## 🛠️ Cómo Utilizar este Proyecto en Script Lab
 
-### Opción 1: Importar en 1 Clic usando `snippet.yaml` (Recomendada)
-1. Abre **Excel 365** y haz clic en la pestaña **Script Lab** $\rightarrow$ **Code**.
-2. En el panel lateral, haz clic en el menú superior (**☰**) y selecciona **Import** (Importar).
-3. Selecciona la opción **Import from YAML** (o pega el contenido del archivo [`snippet.yaml`](./snippet.yaml)).
-4. Pulsa **Run** en el panel superior y ¡listo!
+### Opción 1: Importar en 1 Clic desde GitHub Gist (Recomendada y más rápida ⚡)
 
-### Opción 2: Copiar Pestaña por Pestaña
+Puedes importar directamente el complemento en Script Lab sin descargar ningún archivo utilizando el Gist oficial del proyecto:
+
+🔗 **URL del Gist:** [`https://gist.github.com/intef-dev/f5bb844d81eae511c3fe010a1bbfc63d`](https://gist.github.com/intef-dev/f5bb844d81eae511c3fe010a1bbfc63d)  
+🆔 **ID del Gist:** `f5bb844d81eae511c3fe010a1bbfc63d`
+
+**Pasos para importarlo:**
+1. Abre **Microsoft Excel 365** y haz clic en la pestaña **Script Lab** $\rightarrow$ **Code**.
+2. En el panel lateral de Script Lab, haz clic en el icono de menú superior (**☰**) y selecciona **Import** (Importar).
+3. En la sección inferior **Import from a GitHub Gist**, pega la URL completa o el ID:
+   ```text
+   https://gist.github.com/intef-dev/f5bb844d81eae511c3fe010a1bbfc63d
+   ```
+4. Haz clic en el botón **Import**.
+5. Pulsa **Run** en la barra superior de Script Lab y ¡el Universal Table Manager se abrirá de inmediato!
+
+> 💡 **Nota técnica:** El snippet del Gist utiliza extensión `.txt` compatible con la pasarela de importación de Script Lab para evitar bloqueos de formato y asegurar la lectura directa de los componentes HTML, CSS, TypeScript y Office.js.
+
+### Opción 2: Importar usando el archivo YAML local (`snippet.yaml` o `snippet.txt`)
+1. Abre el archivo [`snippet.yaml`](./snippet.yaml) (o [`snippet.txt`](./snippet.txt)) en este repositorio y copia todo su contenido.
+2. En Script Lab, ve a **Import** $\rightarrow$ pega el texto en la casilla superior **Import snippet YAML**.
+3. Haz clic en **Import** y pulsa **Run**.
+
+### Opción 3: Copiar Pestaña por Pestaña (Para Desarrolladores)
 1. Abre **Script Lab** y haz clic en **New Snippet** (Nuevo proyecto).
 2. Copia el contenido de los siguientes archivos en sus respectivas pestañas:
    - **HTML**: Copia todo el contenido de [`html.html`](./html.html) y pégalo en la pestaña **HTML**.
@@ -89,7 +114,8 @@ tabla-superpoderes-excel-scriptlab/
 ├── LICENSE                                            # Licencia MIT
 ├── .gitignore                                         # Exclusiones de control de versiones
 │
-├── snippet.yaml                                       # Snippet completo para importación directa en Script Lab
+├── snippet.yaml                                       # Snippet oficial YAML para Script Lab
+├── snippet.txt                                        # Snippet en texto plano para importación Gist directa
 ├── script.ts                                          # Código fuente TypeScript con Office.js y CRUD
 ├── html.html                                          # Markup HTML5 del panel lateral y modales
 ├── css.css                                            # Hoja de estilos moderna estilo SaaS
