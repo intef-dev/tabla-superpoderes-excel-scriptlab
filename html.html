@@ -1,0 +1,197 @@
+<!-- ==========================================================================
+     UNIVERSAL TABLE MANAGER - SCRIPT LAB HTML TAB
+     (Pegar directamente en la pestaña HTML de Script Lab)
+     ========================================================================== -->
+
+<div id="app" class="app-container">
+  
+  <!-- HEADER & BARRA DE NAVEGACIÓN -->
+  <header class="app-header">
+    <div class="brand-badge">
+      <span class="bolt-icon">⚡</span>
+      <div>
+        <h1 class="brand-title">Universal Table Manager</h1>
+        <p class="brand-subtitle">Excel 365 • Interactive Web App</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="btnRefreshTables" class="icon-btn" title="Detectar y refrescar tablas del libro">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- PANEL DE CONTROL PRINCIPAL -->
+  <section class="control-panel">
+    <!-- Selector de Tabla Origen -->
+    <div class="form-group-compact">
+      <label for="selectTables" class="control-label">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3zM3 9h18M9 21V9"/></svg>
+        Tabla de Origen:
+      </label>
+      <div class="select-wrapper">
+        <select id="selectTables" class="custom-select">
+          <option value="" disabled selected>Cargando tablas...</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Buscador Global y Botón Nuevo -->
+    <div class="search-action-row">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" id="inputSearch" class="search-input" placeholder="Buscar en cualquier columna..." autocomplete="off">
+        <button id="btnClearSearch" class="clear-btn hidden" title="Limpiar búsqueda">&times;</button>
+      </div>
+      <button id="btnNewRecord" class="btn-primary" title="Crear nuevo registro">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <span>Nuevo</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- RESUMEN / CONTADOR EN VIVO Y SELECTOR DE COLUMNAS -->
+  <div class="records-summary">
+    <div class="summary-left">
+      <span id="counterText" class="counter-badge">Detectando datos...</span>
+      <span id="activeTableBadge" class="table-tag">--</span>
+    </div>
+
+    <div class="summary-actions-right">
+      <!-- Botón Guardar Vista -->
+      <button type="button" id="btnOpenSaveView" class="btn-picker btn-save-view" title="Guardar vista actual como nueva tabla y pestaña en Excel">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        <span>Guardar vista</span>
+      </button>
+
+      <!-- Selector de Columnas Popover -->
+      <div class="columns-picker-wrapper">
+        <button type="button" id="btnToggleColumnsPicker" class="btn-picker" title="Personalizar columnas visibles">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m6-18h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-3-18v18"/></svg>
+          <span id="columnsPickerLabel">Columnas</span>
+          <span class="picker-chevron">▾</span>
+        </button>
+
+        <div id="columnsDropdown" class="columns-dropdown hidden">
+          <div class="dropdown-header">
+            <span class="dropdown-title">👁️ Columnas</span>
+            <button id="btnToggleAllColumns" class="btn-link-action" type="button">Quitar todo</button>
+          </div>
+          <div id="columnsListContainer" class="columns-list">
+            <!-- Checkboxes de columnas dinámicas -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR DE REGISTROS (VISTA TABULAR MODERNA CON SCROLL AUTOMÁTICO) -->
+  <main id="recordsContainer" class="table-scroll-area">
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+    <div class="skeleton-card"></div>
+  </main>
+
+  <!-- MODAL 1: FORMULARIO DINÁMICO (CREAR / EDITAR) -->
+  <div id="modalForm" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span id="modalFormIcon" class="modal-icon">➕</span>
+          <h2 id="modalFormTitle" class="modal-title">Nuevo Registro</h2>
+        </div>
+        <button id="btnCloseModalForm" class="close-btn">&times;</button>
+      </div>
+      <form id="dynamicRecordForm" class="modal-body dynamic-form">
+        <div id="dynamicFormFields" class="form-fields-container">
+          <!-- Campos generados dinámicamente -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btnCancelForm" class="btn-secondary">Cancelar</button>
+          <button type="submit" id="btnSaveForm" class="btn-primary">
+            <span id="btnSaveText">Guardar en Excel</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL 2: VISTA DE FICHA 360° (DETALLE) -->
+  <div id="modalDetail" class="modal-overlay hidden">
+    <div class="modal-card modal-detail-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">👁️</span>
+          <h2 id="modalDetailTitle" class="modal-title">Ficha del Registro</h2>
+        </div>
+        <button id="btnCloseModalDetail" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body detail-modal-body">
+        <div id="detailContent" class="detail-grid">
+          <!-- Campos renderizados con formato premium -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btnCloseDetail" class="btn-secondary">Cerrar</button>
+          <button type="button" id="btnEditFromDetail" class="btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            <span>Editar Registro</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: CONFIRMACIÓN DE ELIMINACIÓN -->
+  <div id="modalConfirm" class="modal-overlay hidden">
+    <div class="modal-card modal-confirm-card">
+      <div class="confirm-content">
+        <div class="confirm-icon-box">🗑️</div>
+        <h3 class="confirm-title">¿Eliminar registro?</h3>
+        <p class="confirm-text">Esta acción eliminará la fila seleccionada directamente de la tabla en Excel y no se puede deshacer.</p>
+        <div class="modal-footer confirm-footer">
+          <button type="button" id="btnCancelDelete" class="btn-secondary">Cancelar</button>
+          <button type="button" id="btnConfirmDelete" class="btn-danger">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: GUARDAR COMO VISTA EN EXCEL -->
+  <div id="modalSaveView" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-icon">📑</span>
+          <h2 class="modal-title">Guardar como Vista</h2>
+        </div>
+        <button id="btnCloseModalSaveView" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body dynamic-form">
+        <p style="font-size: 11px; color: var(--text-secondary); line-height: 1.4;">
+          Se creará una <strong>nueva pestaña y tabla en Excel</strong> con el filtrado, orden y columnas visibles actuales.
+        </p>
+        <div class="input-group">
+          <label class="input-label" for="inputViewName">
+            <span>Nombre de la Pestaña / Tabla</span>
+            <span class="formula-tag" style="background:#E0E7FF; color:#4338CA;">Excel 365</span>
+          </label>
+          <input type="text" id="inputViewName" class="modal-input" placeholder="Vista_DDMMYYHHMMSS" maxlength="30" autocomplete="off">
+        </div>
+        <div id="saveViewSummaryBox" class="view-summary-card">
+          <!-- Estadísticas en vivo de la vista a guardar -->
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btnCancelSaveView" class="btn-secondary">Cancelar</button>
+          <button type="button" id="btnConfirmSaveView" class="btn-primary">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <span>Crear Pestaña en Excel</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENEDOR TOASTS -->
+  <div id="toastContainer" class="toast-container"></div>
+
+</div>

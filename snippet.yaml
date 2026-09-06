@@ -1,0 +1,1231 @@
+name: Administrador Tablas
+description: Create a new snippet from a blank template.
+host: EXCEL
+api_set: {}
+script:
+  content: "/**\r\n * ============================================================================\r\n * 📊 UNIVERSAL TABLE MANAGER - SCRIPT LAB (OFFICE.JS & EXCEL 365)\r\n * ============================================================================\r\n * Aplicación universal para interactuar, gestionar y visualizar cualquier tabla\r\n * de Excel con capacidades avanzadas tipo Power BI, formularios dinámicos,\r\n * autoincremento de folios, protección de fórmulas y exportación ejecutiva.\r\n * \r\n * Desarrollado para Microsoft Script Lab & Office.js\r\n * ============================================================================\r\n */\r\n\r\n// ============================================================================\r\n// 1️⃣ TIPOS, MODELOS Y ESTADO DE LA APLICACIÓN\r\n// ============================================================================\r\n\r\ntype TipoColumna = 'date' | 'number' | 'text' | 'email';\r\ntype DireccionOrden = 'asc' | 'desc';\r\ntype TipoNotificacion = 'info' | 'success' | 'danger';\r\ntype ValorCelda = string | number | boolean | null | undefined;\r\ntype DatosFila = ValorCelda[];\r\n\r\n/**\r\n * Modelo de Estado Centralizado de la Aplicación.\r\n */\r\ninterface ModeloEstadoApp {\r\n  isOfficeReady: boolean;\r\n  tablasDisponibles: string[];\r\n  nombreTablaActiva: string;\r\n  encabezados: string[];\r\n  filasDatos: DatosFila[];\r\n  datosFormulas: string[][];\r\n  datosFormatosNumero: string[][];\r\n  esColumnaCalculada: boolean[];\r\n  tiposColumna: TipoColumna[];\r\n  opcionesColumna: (string[] | null)[];\r\n  indicesColumnasVisibles: number[];\r\n  indicesFiltrados: number[];\r\n  consultaBusquedaActiva: string;\r\n  indiceColumnaOrden: number | null;\r\n  direccionOrden: DireccionOrden;\r\n  indiceFilaSeleccionada: number | null;\r\n  indiceFilaEnEdicion: number | null;\r\n  indiceFilaAEliminar: number | null;\r\n}\r\n\r\n/**\r\n * Referencias Fuertemente Tipadas a los Elementos del DOM.\r\n */\r\ninterface ElementosDOM {\r\n  // Panel Superior y Filtros\r\n  selectTables: HTMLSelectElement;\r\n  btnRefreshTables: HTMLButtonElement;\r\n  inputSearch: HTMLInputElement;\r\n  btnClearSearch: HTMLButtonElement;\r\n  btnNewRecord: HTMLButtonElement;\r\n  counterText: HTMLElement;\r\n  activeTableBadge: HTMLElement;\r\n  recordsContainer: HTMLElement;\r\n\r\n  // Selector de Columnas Visibles\r\n  btnToggleColumnsPicker: HTMLButtonElement;\r\n  columnsDropdown: HTMLElement;\r\n  columnsPickerLabel: HTMLElement;\r\n  btnToggleAllColumns: HTMLButtonElement;\r\n  columnsListContainer: HTMLElement;\r\n\r\n  // Botón Guardar Vista\r\n  btnOpenSaveView: HTMLButtonElement;\r\n\r\n  // Modal 1: Formulario Dinámico (Crear / Editar)\r\n  modalForm: HTMLElement;\r\n  modalFormTitle: HTMLElement;\r\n  modalFormIcon: HTMLElement;\r\n  dynamicRecordForm: HTMLFormElement;\r\n  dynamicFormFields: HTMLElement;\r\n  btnSaveForm: HTMLButtonElement;\r\n  btnSaveText: HTMLElement;\r\n  btnCloseModalForm: HTMLButtonElement;\r\n  btnCancelForm: HTMLButtonElement;\r\n\r\n  // Modal 2: Ficha 360° (Detalle)\r\n  modalDetail: HTMLElement;\r\n  modalDetailTitle: HTMLElement;\r\n  detailContent: HTMLElement;\r\n  btnCloseModalDetail: HTMLButtonElement;\r\n  btnCloseDetail: HTMLButtonElement;\r\n  btnEditFromDetail: HTMLButtonElement;\r\n\r\n  // Modal 3: Confirmación de Eliminación\r\n  modalConfirm: HTMLElement;\r\n  btnCancelDelete: HTMLButtonElement;\r\n  btnConfirmDelete: HTMLButtonElement;\r\n\r\n  // Modal 4: Guardar como Vista en Excel\r\n  modalSaveView: HTMLElement;\r\n  inputViewName: HTMLInputElement;\r\n  saveViewSummaryBox: HTMLElement;\r\n  btnCloseModalSaveView: HTMLButtonElement;\r\n  btnCancelSaveView: HTMLButtonElement;\r\n  btnConfirmSaveView: HTMLButtonElement;\r\n\r\n  // Contenedor Toast\r\n  toastContainer: HTMLElement;\r\n}\r\n\r\nconst EstadoApp: ModeloEstadoApp = {\r\n  isOfficeReady: false,\r\n  tablasDisponibles: [],\r\n  nombreTablaActiva: '',\r\n  encabezados: [],\r\n  filasDatos: [],\r\n  datosFormulas: [],\r\n  datosFormatosNumero: [],\r\n  esColumnaCalculada: [],\r\n  tiposColumna: [],\r\n  opcionesColumna: [],\r\n  indicesColumnasVisibles: [],\r\n  indicesFiltrados: [],\r\n  consultaBusquedaActiva: '',\r\n  indiceColumnaOrden: null,\r\n  direccionOrden: 'asc',\r\n  indiceFilaSeleccionada: null,\r\n  indiceFilaEnEdicion: null,\r\n  indiceFilaAEliminar: null\r\n};\r\n\r\nlet DOM: ElementosDOM;\r\n\r\nfunction obtenerElementosDOM(): ElementosDOM {\r\n  return {\r\n    selectTables: document.getElementById('selectTables') as HTMLSelectElement,\r\n    btnRefreshTables: document.getElementById('btnRefreshTables') as HTMLButtonElement,\r\n    inputSearch: document.getElementById('inputSearch') as HTMLInputElement,\r\n    btnClearSearch: document.getElementById('btnClearSearch') as HTMLButtonElement,\r\n    btnNewRecord: document.getElementById('btnNewRecord') as HTMLButtonElement,\r\n    counterText: document.getElementById('counterText') as HTMLElement,\r\n    activeTableBadge: document.getElementById('activeTableBadge') as HTMLElement,\r\n    recordsContainer: document.getElementById('recordsContainer') as HTMLElement,\r\n\r\n    btnToggleColumnsPicker: document.getElementById('btnToggleColumnsPicker') as HTMLButtonElement,\r\n    columnsDropdown: document.getElementById('columnsDropdown') as HTMLElement,\r\n    columnsPickerLabel: document.getElementById('columnsPickerLabel') as HTMLElement,\r\n    btnToggleAllColumns: document.getElementById('btnToggleAllColumns') as HTMLButtonElement,\r\n    columnsListContainer: document.getElementById('columnsListContainer') as HTMLElement,\r\n\r\n    btnOpenSaveView: document.getElementById('btnOpenSaveView') as HTMLButtonElement,\r\n\r\n    modalForm: document.getElementById('modalForm') as HTMLElement,\r\n    modalFormTitle: document.getElementById('modalFormTitle') as HTMLElement,\r\n    modalFormIcon: document.getElementById('modalFormIcon') as HTMLElement,\r\n    dynamicRecordForm: document.getElementById('dynamicRecordForm') as HTMLFormElement,\r\n    dynamicFormFields: document.getElementById('dynamicFormFields') as HTMLElement,\r\n    btnSaveForm: document.getElementById('btnSaveForm') as HTMLButtonElement,\r\n    btnSaveText: document.getElementById('btnSaveText') as HTMLElement,\r\n    btnCloseModalForm: document.getElementById('btnCloseModalForm') as HTMLButtonElement,\r\n    btnCancelForm: document.getElementById('btnCancelForm') as HTMLButtonElement,\r\n\r\n    modalDetail: document.getElementById('modalDetail') as HTMLElement,\r\n    modalDetailTitle: document.getElementById('modalDetailTitle') as HTMLElement,\r\n    detailContent: document.getElementById('detailContent') as HTMLElement,\r\n    btnCloseModalDetail: document.getElementById('btnCloseModalDetail') as HTMLButtonElement,\r\n    btnCloseDetail: document.getElementById('btnCloseDetail') as HTMLButtonElement,\r\n    btnEditFromDetail: document.getElementById('btnEditFromDetail') as HTMLButtonElement,\r\n\r\n    modalConfirm: document.getElementById('modalConfirm') as HTMLElement,\r\n    btnCancelDelete: document.getElementById('btnCancelDelete') as HTMLButtonElement,\r\n    btnConfirmDelete: document.getElementById('btnConfirmDelete') as HTMLButtonElement,\r\n\r\n    modalSaveView: document.getElementById('modalSaveView') as HTMLElement,\r\n    inputViewName: document.getElementById('inputViewName') as HTMLInputElement,\r\n    saveViewSummaryBox: document.getElementById('saveViewSummaryBox') as HTMLElement,\r\n    btnCloseModalSaveView: document.getElementById('btnCloseModalSaveView') as HTMLButtonElement,\r\n    btnCancelSaveView: document.getElementById('btnCancelSaveView') as HTMLButtonElement,\r\n    btnConfirmSaveView: document.getElementById('btnConfirmSaveView') as HTMLButtonElement,\r\n\r\n    toastContainer: document.getElementById('toastContainer') as HTMLElement\r\n  };\r\n}\r\n\r\n// ============================================================================\r\n// 2️⃣ INICIALIZACIÓN Y VINCULACIÓN DE EVENTOS\r\n// ============================================================================\r\n\r\nfunction inicializarAdministradorUniversal(): void {\r\n  DOM = obtenerElementosDOM();\r\n  vincularEventosUI();\r\n  cargarTablasDelLibro();\r\n}\r\n\r\n// Inicialización de Office.js garantizada en Script Lab\r\nif (typeof Office !== 'undefined' && Office.onReady) {\r\n  Office.onReady((info) => {\r\n    if (info.host === Office.HostType.Excel) {\r\n      EstadoApp.isOfficeReady = true;\r\n      inicializarAdministradorUniversal();\r\n    } else {\r\n      inicializarAdministradorUniversal();\r\n    }\r\n  });\r\n} else {\r\n  setTimeout(inicializarAdministradorUniversal, 100);\r\n}\r\n\r\nfunction vincularEventosUI(): void {\r\n  // Cambio de tabla activa\r\n  DOM.selectTables ?.addEventListener('change', (e: Event) => {\r\n    const target = e.target as HTMLSelectElement;\r\n    const nombre = target.value;\r\n    if (nombre) cambiarTablaActiva(nombre);\r\n  });\r\n\r\n  // Refrescar lista de tablas\r\n  DOM.btnRefreshTables ?.addEventListener('click', () => {\r\n    mostrarNotificacionToast(\"Detectando tablas en el libro...\", \"info\");\r\n    cargarTablasDelLibro();\r\n  });\r\n\r\n  // Buscador universal en tiempo real\r\n  DOM.inputSearch ?.addEventListener('input', (e: Event) => {\r\n    const target = e.target as HTMLInputElement;\r\n    EstadoApp.consultaBusquedaActiva = target.value.trim().toLowerCase();\r\n    DOM.btnClearSearch ?.classList.toggle('hidden', EstadoApp.consultaBusquedaActiva.length === 0);\r\n    filtraryOrdenarRegistros();\r\n  });\r\n\r\n  DOM.btnClearSearch ?.addEventListener('click', () => {\r\n    if (DOM.inputSearch) DOM.inputSearch.value = '';\r\n    EstadoApp.consultaBusquedaActiva = '';\r\n    DOM.btnClearSearch ?.classList.add('hidden');\r\n    filtraryOrdenarRegistros();\r\n  });\r\n\r\n  // Botón Nuevo Registro\r\n  DOM.btnNewRecord ?.addEventListener('click', abrirModalNuevoRegistro);\r\n\r\n  // Cerrar Ventanas Modales\r\n  DOM.btnCloseModalForm ?.addEventListener('click', cerrarModalFormulario);\r\n  DOM.btnCancelForm ?.addEventListener('click', cerrarModalFormulario);\r\n  DOM.btnCloseModalDetail ?.addEventListener('click', cerrarModalFicha360);\r\n  DOM.btnCloseDetail ?.addEventListener('click', cerrarModalFicha360);\r\n  DOM.btnCancelDelete ?.addEventListener('click', cerrarModalConfirmacionEliminar);\r\n\r\n  // Selector de Columnas Popover\r\n  DOM.btnToggleColumnsPicker ?.addEventListener('click', (e: MouseEvent) => {\r\n    e.stopPropagation();\r\n    DOM.columnsDropdown ?.classList.toggle('hidden');\r\n  });\r\n\r\n  DOM.btnToggleAllColumns ?.addEventListener('click', (e: MouseEvent) => {\r\n    e.stopPropagation();\r\n    alternarTodasLasColumnas();\r\n  });\r\n\r\n  // Cerrar Popover de Columnas al hacer clic fuera\r\n  document.addEventListener('click', (e: MouseEvent) => {\r\n    const target = e.target as HTMLElement;\r\n    if (!target.closest('.columns-picker-wrapper')) {\r\n      DOM.columnsDropdown ?.classList.add('hidden');\r\n    }\r\n  });\r\n\r\n  // Enviar Formulario\r\n  DOM.dynamicRecordForm ?.addEventListener('submit', procesarEnvioFormulario);\r\n  DOM.btnSaveForm ?.addEventListener('click', (e: MouseEvent) => {\r\n    e.preventDefault();\r\n    procesarEnvioFormulario();\r\n  });\r\n\r\n  // Editar desde Ficha de Detalle\r\n  DOM.btnEditFromDetail ?.addEventListener('click', () => {\r\n    const idx = EstadoApp.indiceFilaSeleccionada;\r\n    cerrarModalFicha360();\r\n    if (idx !== null) abrirModalEditarRegistro(idx);\r\n  });\r\n\r\n  // Modal Guardar Vista\r\n  DOM.btnOpenSaveView ?.addEventListener('click', abrirModalGuardarVista);\r\n  DOM.btnCloseModalSaveView ?.addEventListener('click', cerrarModalGuardarVista);\r\n  DOM.btnCancelSaveView ?.addEventListener('click', cerrarModalGuardarVista);\r\n  DOM.btnConfirmSaveView ?.addEventListener('click', confirmarGuardarVista);\r\n\r\n  // Confirmar Eliminación\r\n  DOM.btnConfirmDelete ?.addEventListener('click', confirmarEliminarRegistro);\r\n}\r\n\r\n// ============================================================================\r\n// 3️⃣ SUPERPODER 1: ADAPTABILIDAD UNIVERSAL (Lectura con Office.js)\r\n// ============================================================================\r\n\r\n/**\r\n * Detecta dinámicamente todas las tablas de Excel en el libro activo.\r\n */\r\nasync function cargarTablasDelLibro(): Promise<void> {\r\n  try {\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const tables = context.workbook.tables;\r\n      tables.load([\"items/name\"]);\r\n      await context.sync();\r\n\r\n      EstadoApp.tablasDisponibles = tables.items.map(t => t.name);\r\n\r\n      if (EstadoApp.tablasDisponibles.length === 0) {\r\n        if (DOM.selectTables) DOM.selectTables.innerHTML = '<option value=\"\">No hay tablas en el libro</option>';\r\n        if (DOM.activeTableBadge) DOM.activeTableBadge.textContent = 'Sin Tablas';\r\n        renderizarEstadoVacio(\"No se encontraron tablas de Excel en este libro.\");\r\n        return;\r\n      }\r\n\r\n      poblarSelectorDeTablas();\r\n\r\n      const actual = EstadoApp.nombreTablaActiva;\r\n      if (actual && EstadoApp.tablasDisponibles.includes(actual)) {\r\n        cambiarTablaActiva(actual);\r\n      } else {\r\n        cambiarTablaActiva(EstadoApp.tablasDisponibles[0]);\r\n      }\r\n    });\r\n  } catch (error) {\r\n    console.error(\"Error al cargar tablas del libro:\", error);\r\n    mostrarNotificacionToast(\"Error al conectar con las tablas de Excel\", \"danger\");\r\n  }\r\n}\r\n\r\n/**\r\n * Lee datos, encabezados, fórmulas, formatos y reglas de validación de la tabla seleccionada.\r\n */\r\nasync function cargarDatosTablaActiva(nombreTabla: string): Promise<void> {\r\n  if (!nombreTabla) return;\r\n  mostrarEsqueletosDeCarga();\r\n\r\n  try {\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const table = context.workbook.tables.getItem(nombreTabla);\r\n      const headerRange = table.getHeaderRowRange();\r\n      const bodyRange = table.getDataBodyRange();\r\n\r\n      headerRange.load([\"values\"]);\r\n      bodyRange.load([\"values\", \"formulas\", \"numberFormat\"]);\r\n      await context.sync();\r\n\r\n      EstadoApp.nombreTablaActiva = nombreTabla;\r\n      EstadoApp.encabezados = (headerRange.values[0] || []).map(h => String(h).trim());\r\n      EstadoApp.filasDatos = bodyRange.values || [];\r\n      EstadoApp.datosFormulas = bodyRange.formulas || [];\r\n      EstadoApp.datosFormatosNumero = bodyRange.numberFormat || [];\r\n      EstadoApp.opcionesColumna = new Array(EstadoApp.encabezados.length).fill(null);\r\n\r\n      // Cargar validaciones de datos (Listas desplegables de Excel)\r\n      try {\r\n        const columns = table.columns;\r\n        columns.load([\"items/name\"]);\r\n        await context.sync();\r\n\r\n        const validaciones: { colIdx: number; validation: Excel.DataValidation }[] = [];\r\n        for (let c = 0; c < EstadoApp.encabezados.length; c++) {\r\n          const colRange = table.columns.getItemAt(c).getDataBodyRange();\r\n          colRange.dataValidation.load([\"rule\"]);\r\n          validaciones.push({ colIdx: c, validation: colRange.dataValidation });\r\n        }\r\n        await context.sync();\r\n\r\n        for (const item of validaciones) {\r\n          const rule = item.validation ?.rule;\r\n          if (rule && rule.list && rule.list.source) {\r\n            const sourceStr = String(rule.list.source).trim();\r\n\r\n            if (sourceStr.startsWith('=')) {\r\n              // Rango referenciado (ej: =Catalogos!$A$2:$A$10)\r\n              try {\r\n                const cleanRef = sourceStr.substring(1).trim();\r\n                let referencedRange: Excel.Range | null = null;\r\n\r\n                if (cleanRef.includes('!')) {\r\n                  const parts = cleanRef.split('!');\r\n                  const sheetName = parts[0].replace(/^['\"]|['\"]$/g, '').trim();\r\n                  const address = parts[1].trim();\r\n                  const targetSheet = context.workbook.worksheets.getItem(sheetName);\r\n                  referencedRange = targetSheet.getRange(address);\r\n                } else if (/^[A-Za-z$]+[0-9]+/.test(cleanRef)) {\r\n                  referencedRange = table.worksheet.getRange(cleanRef);\r\n                } else {\r\n                  const namedItem = context.workbook.names.getItem(cleanRef);\r\n                  referencedRange = namedItem.getRange();\r\n                }\r\n\r\n                if (referencedRange) {\r\n                  referencedRange.load([\"values\"]);\r\n                  await context.sync();\r\n\r\n                  const listValues: string[] = [];\r\n                  if (referencedRange.values) {\r\n                    referencedRange.values.forEach((r: any[]) => {\r\n                      r.forEach((val: any) => {\r\n                        if (val !== null && val !== undefined && String(val).trim() !== '') {\r\n                          listValues.push(String(val).trim());\r\n                        }\r\n                      });\r\n                    });\r\n                  }\r\n                  if (listValues.length > 0) {\r\n                    EstadoApp.opcionesColumna[item.colIdx] = Array.from(new Set(listValues));\r\n                  }\r\n                }\r\n              } catch (refErr) {\r\n                console.warn(`No se pudo resolver el catálogo referenciado \"${sourceStr}\":`, refErr);\r\n              }\r\n            } else {\r\n              // Lista de valores literales separados por comas\r\n              const cleanedSource = sourceStr.replace(/^[\"']|[\"']$/g, '');\r\n              const listValues = cleanedSource\r\n                .split(/[,;]/)\r\n                .map(s => s.trim().replace(/^[\"']|[\"']$/g, ''))\r\n                .filter(s => s.length > 0);\r\n              if (listValues.length > 0) {\r\n                EstadoApp.opcionesColumna[item.colIdx] = listValues;\r\n              }\r\n            }\r\n          }\r\n        }\r\n      } catch (valErr) {\r\n        console.warn(\"Validaciones de lista no disponibles:\", valErr);\r\n      }\r\n\r\n      // Inferir tipos reales de columnas\r\n      inferirTiposDeColumna();\r\n\r\n      // Columnas visibles por defecto\r\n      EstadoApp.indicesColumnasVisibles = EstadoApp.encabezados.map((_, i) => i);\r\n      renderizarSelectorColumnas();\r\n\r\n      filtraryOrdenarRegistros();\r\n    });\r\n  } catch (error) {\r\n    console.error(`Error al cargar datos de la tabla ${nombreTabla}:`, error);\r\n    mostrarNotificacionToast(`Error al leer tabla ${nombreTabla}`, \"danger\");\r\n  }\r\n}\r\n\r\nfunction cambiarTablaActiva(nombreTabla: string): void {\r\n  if (DOM.selectTables) DOM.selectTables.value = nombreTabla;\r\n  if (DOM.activeTableBadge) DOM.activeTableBadge.textContent = nombreTabla;\r\n  EstadoApp.indiceColumnaOrden = null;\r\n  EstadoApp.direccionOrden = 'asc';\r\n  cargarDatosTablaActiva(nombreTabla);\r\n}\r\n\r\nfunction poblarSelectorDeTablas(): void {\r\n  if (!DOM.selectTables) return;\r\n  DOM.selectTables.innerHTML = '';\r\n  EstadoApp.tablasDisponibles.forEach((nombre: string) => {\r\n    const opt = document.createElement('option');\r\n    opt.value = nombre;\r\n    opt.textContent = nombre;\r\n    DOM.selectTables.appendChild(opt);\r\n  });\r\n}\r\n\r\n// ============================================================================\r\n// 4️⃣ SUPERPODER 2: BUSCADOR MULTICOLUMNA & ORDENAMIENTO POWER BI\r\n// ============================================================================\r\n\r\n/**\r\n * Filtra y ordena los registros en memoria a través de todas las columnas.\r\n */\r\nfunction filtraryOrdenarRegistros(): void {\r\n  const query = EstadoApp.consultaBusquedaActiva;\r\n\r\n  // 1. Filtrar coincidencias en cualquier columna\r\n  if (!query) {\r\n    EstadoApp.indicesFiltrados = EstadoApp.filasDatos.map((_, i) => i);\r\n  } else {\r\n    EstadoApp.indicesFiltrados = [];\r\n    EstadoApp.filasDatos.forEach((fila: DatosFila, index: number) => {\r\n      const match = fila.some((valorCelda: ValorCelda, colIdx: number) => {\r\n        if (valorCelda === null || valorCelda === undefined) return false;\r\n        if (EstadoApp.tiposColumna[colIdx] === 'date') {\r\n          const fechaFormateada = formatearFechaExcel(valorCelda);\r\n          if (fechaFormateada.toLowerCase().includes(query)) return true;\r\n        }\r\n        return String(valorCelda).toLowerCase().includes(query);\r\n      });\r\n      if (match) EstadoApp.indicesFiltrados.push(index);\r\n    });\r\n  }\r\n\r\n  // 2. Ordenar según columna seleccionada\r\n  if (EstadoApp.indiceColumnaOrden !== null && EstadoApp.indicesFiltrados.length > 1) {\r\n    const colIdx = EstadoApp.indiceColumnaOrden;\r\n    const dir = EstadoApp.direccionOrden === 'asc' ? 1 : -1;\r\n    const tipoCol = EstadoApp.tiposColumna[colIdx];\r\n\r\n    EstadoApp.indicesFiltrados.sort((idxA: number, idxB: number) => {\r\n      const valA = EstadoApp.filasDatos[idxA][colIdx];\r\n      const valB = EstadoApp.filasDatos[idxB][colIdx];\r\n\r\n      if (valA === valB) return 0;\r\n      if (valA === null || valA === undefined || valA === '') return 1;\r\n      if (valB === null || valB === undefined || valB === '') return -1;\r\n\r\n      if (tipoCol === 'number') {\r\n        const numA = Number(valA);\r\n        const numB = Number(valB);\r\n        if (!isNaN(numA) && !isNaN(numB)) return (numA - numB) * dir;\r\n      }\r\n\r\n      if (tipoCol === 'date') {\r\n        const aTimestamp = (v: ValorCelda) => {\r\n          if (typeof v === 'number' && v > 10000) return v;\r\n          const dStr = formatearFechaExcel(v);\r\n          const t = new Date(dStr).getTime();\r\n          return isNaN(t) ? 0 : t;\r\n        };\r\n        return (aTimestamp(valA) - aTimestamp(valB)) * dir;\r\n      }\r\n\r\n      return String(valA).localeCompare(String(valB), 'es', { numeric: true, sensitivity: 'base' }) * dir;\r\n    });\r\n  }\r\n\r\n  renderizarVistaTabular();\r\n  actualizarContador();\r\n}\r\n\r\nfunction alternarOrdenColumna(colIdx: number): void {\r\n  if (EstadoApp.indiceColumnaOrden === colIdx) {\r\n    EstadoApp.direccionOrden = EstadoApp.direccionOrden === 'asc' ? 'desc' : 'asc';\r\n  } else {\r\n    EstadoApp.indiceColumnaOrden = colIdx;\r\n    EstadoApp.direccionOrden = 'asc';\r\n  }\r\n  filtraryOrdenarRegistros();\r\n}\r\n\r\nfunction resaltarCoincidencia(texto: ValorCelda, query: string): string {\r\n  if (!query || texto === null || texto === undefined || texto === '') return String(texto || '');\r\n  const str = String(texto);\r\n  const escaped = query.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&');\r\n  const regex = new RegExp(`(${escaped})`, 'gi');\r\n  return str.replace(regex, '<mark class=\"search-highlight\">$1</mark>');\r\n}\r\n\r\n// ============================================================================\r\n// 5️⃣ SUPERPODER 3: SELECTOR DINÁMICO DE COLUMNAS AL VUELO\r\n// ============================================================================\r\n\r\nfunction renderizarSelectorColumnas(): void {\r\n  if (!DOM.columnsListContainer || !DOM.columnsPickerLabel) return;\r\n\r\n  DOM.columnsPickerLabel.textContent = `Columnas (${EstadoApp.indicesColumnasVisibles.length}/${EstadoApp.encabezados.length})`;\r\n  DOM.columnsListContainer.innerHTML = '';\r\n\r\n  const indicesNoId = EstadoApp.encabezados\r\n    .map((h, i) => ({ encabezado: h, idx: i }))\r\n    .filter(item => !esColumnaIdentificador(item.encabezado) && item.idx !== 0)\r\n    .map(item => item.idx);\r\n\r\n  const todosSeleccionados = indicesNoId.every(idx => EstadoApp.indicesColumnasVisibles.includes(idx));\r\n  if (DOM.btnToggleAllColumns) {\r\n    DOM.btnToggleAllColumns.textContent = todosSeleccionados ? 'Quitar todo' : 'Seleccionar todo';\r\n  }\r\n\r\n  EstadoApp.encabezados.forEach((encabezado: string, colIdx: number) => {\r\n    const esId = esColumnaIdentificador(encabezado) || colIdx === 0;\r\n    const esVisible = EstadoApp.indicesColumnasVisibles.includes(colIdx);\r\n\r\n    const itemLabel = document.createElement('label');\r\n    itemLabel.className = `column-checkbox-item ${esId ? 'disabled' : ''}`;\r\n    if (esId) itemLabel.title = 'La columna ID es obligatoria y no se puede ocultar';\r\n\r\n    const checkbox = document.createElement('input');\r\n    checkbox.type = 'checkbox';\r\n    checkbox.checked = esVisible;\r\n    if (esId) checkbox.disabled = true;\r\n\r\n    checkbox.addEventListener('change', () => {\r\n      if (esId) return;\r\n      if (checkbox.checked) {\r\n        if (!EstadoApp.indicesColumnasVisibles.includes(colIdx)) {\r\n          EstadoApp.indicesColumnasVisibles.push(colIdx);\r\n          EstadoApp.indicesColumnasVisibles.sort((a, b) => a - b);\r\n        }\r\n      } else {\r\n        EstadoApp.indicesColumnasVisibles = EstadoApp.indicesColumnasVisibles.filter(i => i !== colIdx);\r\n      }\r\n      renderizarSelectorColumnas();\r\n      renderizarVistaTabular();\r\n      actualizarContador();\r\n    });\r\n\r\n    const nameSpan = document.createElement('span');\r\n    nameSpan.className = 'col-name';\r\n    nameSpan.textContent = encabezado;\r\n\r\n    itemLabel.appendChild(checkbox);\r\n    itemLabel.appendChild(nameSpan);\r\n\r\n    if (esId) {\r\n      const lockBadge = document.createElement('span');\r\n      lockBadge.className = 'id-lock-tag';\r\n      lockBadge.textContent = '🔒 ID';\r\n      itemLabel.appendChild(lockBadge);\r\n    }\r\n\r\n    DOM.columnsListContainer.appendChild(itemLabel);\r\n  });\r\n}\r\n\r\nfunction alternarTodasLasColumnas(): void {\r\n  const idIndices = EstadoApp.encabezados\r\n    .map((h, i) => ({ encabezado: h, idx: i }))\r\n    .filter(item => esColumnaIdentificador(item.encabezado) || item.idx === 0)\r\n    .map(item => item.idx);\r\n\r\n  const nonIdIndices = EstadoApp.encabezados\r\n    .map((h, i) => ({ encabezado: h, idx: i }))\r\n    .filter(item => !esColumnaIdentificador(item.encabezado) && item.idx !== 0)\r\n    .map(item => item.idx);\r\n\r\n  const todosSeleccionados = nonIdIndices.every(idx => EstadoApp.indicesColumnasVisibles.includes(idx));\r\n\r\n  if (todosSeleccionados) {\r\n    EstadoApp.indicesColumnasVisibles = [...idIndices];\r\n  } else {\r\n    EstadoApp.indicesColumnasVisibles = EstadoApp.encabezados.map((_, i) => i);\r\n  }\r\n\r\n  renderizarSelectorColumnas();\r\n  renderizarVistaTabular();\r\n  actualizarContador();\r\n}\r\n\r\n// ============================================================================\r\n// 6️⃣ SUPERPODER 4: GENERADOR DE FORMULARIOS Y PROTECCIÓN DE FÓRMULAS\r\n// ============================================================================\r\n\r\nfunction esColumnaIdentificador(encabezado: string): boolean {\r\n  const clean = (encabezado || '').trim().toLowerCase();\r\n  return clean === 'id' || clean === 'id_' || clean === 'código' || clean === 'codigo' || clean === 'sku' || clean === 'folio' || clean === 'clave';\r\n}\r\n\r\nfunction generarSiguienteIdAuto(colIdx: number): string {\r\n  const valoresExistentes = EstadoApp.filasDatos\r\n    .map(r => String(r[colIdx] || '').trim())\r\n    .filter(Boolean);\r\n\r\n  if (valoresExistentes.length === 0) return 'ID-101';\r\n\r\n  let maxNum = -1;\r\n  let samplePrefix = '';\r\n  let padLength = 1;\r\n\r\n  for (const val of valoresExistentes) {\r\n    const match = val.match(/^(.*?)(\\d+)$/);\r\n    if (match) {\r\n      const prefix = match[1];\r\n      const numStr = match[2];\r\n      const num = parseInt(numStr, 10);\r\n      if (!isNaN(num) && num > maxNum) {\r\n        maxNum = num;\r\n        samplePrefix = prefix;\r\n        padLength = numStr.length;\r\n      }\r\n    }\r\n  }\r\n\r\n  if (maxNum !== -1) {\r\n    const nextNum = maxNum + 1;\r\n    const padded = String(nextNum).padStart(padLength, '0');\r\n    return `${samplePrefix}${padded}`;\r\n  }\r\n\r\n  return `ID-${valoresExistentes.length + 1}`;\r\n}\r\n\r\nfunction abrirModalNuevoRegistro(): void {\r\n  EstadoApp.indiceFilaEnEdicion = null;\r\n  if (DOM.modalFormTitle) DOM.modalFormTitle.textContent = 'Nuevo Registro';\r\n  if (DOM.modalFormIcon) DOM.modalFormIcon.textContent = '➕';\r\n  if (DOM.btnSaveText) DOM.btnSaveText.textContent = 'Guardar en Excel';\r\n\r\n  construirCamposFormularioDinamico(null);\r\n  DOM.modalForm ?.classList.remove('hidden');\r\n}\r\n\r\nfunction abrirModalEditarRegistro(rowIndex: number): void {\r\n  EstadoApp.indiceFilaEnEdicion = rowIndex;\r\n  if (DOM.modalFormTitle) DOM.modalFormTitle.textContent = `Editar Registro (Fila ${rowIndex + 1})`;\r\n  if (DOM.modalFormIcon) DOM.modalFormIcon.textContent = '✏️';\r\n  if (DOM.btnSaveText) DOM.btnSaveText.textContent = 'Actualizar en Excel';\r\n\r\n  const datosFilaActual = EstadoApp.filasDatos[rowIndex];\r\n  construirCamposFormularioDinamico(datosFilaActual);\r\n  DOM.modalForm ?.classList.remove('hidden');\r\n}\r\n\r\nfunction cerrarModalFormulario(): void {\r\n  DOM.modalForm ?.classList.add('hidden');\r\n  EstadoApp.indiceFilaEnEdicion = null;\r\n}\r\n\r\n/**\r\n * Construye dinámicamente inputs tipados, listas de catálogos y bloquea fórmulas.\r\n */\r\nfunction construirCamposFormularioDinamico(datosFila: DatosFila | null): void {\r\n  if (!DOM.dynamicFormFields) return;\r\n  DOM.dynamicFormFields.innerHTML = '';\r\n\r\n  EstadoApp.encabezados.forEach((encabezado: string, colIdx: number) => {\r\n    const esFormula = EstadoApp.esColumnaCalculada[colIdx];\r\n    const tipoCol = EstadoApp.tiposColumna[colIdx];\r\n    const opciones = EstadoApp.opcionesColumna[colIdx];\r\n    const esId = esColumnaIdentificador(encabezado);\r\n\r\n    let valorInicial = datosFila ? (datosFila[colIdx] !== undefined && datosFila[colIdx] !== null ? String(datosFila[colIdx]) : '') : '';\r\n\r\n    if (!datosFila && esId && !esFormula) {\r\n      valorInicial = generarSiguienteIdAuto(colIdx);\r\n    }\r\n\r\n    const group = document.createElement('div');\r\n    group.className = 'input-group';\r\n\r\n    const label = document.createElement('label');\r\n    label.className = 'input-label';\r\n    label.innerHTML = `\r\n      <span>${encabezado}</span>\r\n      ${esFormula ? '<span class=\"formula-tag\">⚙️ Calculada</span>' : ''}\r\n      ${opciones && !esFormula ? '<span class=\"formula-tag\" style=\"background:#E0E7FF; color:#4338CA;\">📋 Lista</span>' : ''}\r\n      ${esId && !esFormula && !datosFila ? '<span class=\"formula-tag\" style=\"background:#DCFCE7; color:#15803D;\">⚡ Auto-ID</span>' : ''}\r\n      ${esId && !esFormula && datosFila ? '<span class=\"formula-tag\" style=\"background:#F1F5F9; color:#64748B;\">🔒 ID Inmutable</span>' : ''}\r\n    `;\r\n\r\n    if (esFormula) {\r\n      const input = document.createElement('input');\r\n      input.name = `field_${colIdx}`;\r\n      input.className = 'modal-input';\r\n      input.dataset.colIndex = String(colIdx);\r\n      input.type = 'text';\r\n      input.value = valorInicial || '(Calculado automáticamente)';\r\n      input.disabled = true;\r\n\r\n      group.appendChild(label);\r\n      group.appendChild(input);\r\n    } else if (esId && datosFila) {\r\n      const input = document.createElement('input');\r\n      input.name = `field_${colIdx}`;\r\n      input.className = 'modal-input';\r\n      input.dataset.colIndex = String(colIdx);\r\n      input.type = 'text';\r\n      input.value = valorInicial;\r\n      input.disabled = true;\r\n      input.title = 'El identificador principal es inmutable';\r\n\r\n      group.appendChild(label);\r\n      group.appendChild(input);\r\n    } else if (opciones && opciones.length > 0) {\r\n      const select = document.createElement('select');\r\n      select.name = `field_${colIdx}`;\r\n      select.className = 'modal-input custom-select';\r\n      select.dataset.colIndex = String(colIdx);\r\n\r\n      const defaultOpt = document.createElement('option');\r\n      defaultOpt.value = '';\r\n      defaultOpt.textContent = `-- Seleccionar ${encabezado} --`;\r\n      if (!valorInicial) defaultOpt.selected = true;\r\n      select.appendChild(defaultOpt);\r\n\r\n      opciones.forEach((optVal: string) => {\r\n        const opt = document.createElement('option');\r\n        opt.value = optVal;\r\n        opt.textContent = optVal;\r\n        if (valorInicial && String(valorInicial).toLowerCase() === optVal.toLowerCase()) {\r\n          opt.selected = true;\r\n        }\r\n        select.appendChild(opt);\r\n      });\r\n\r\n      group.appendChild(label);\r\n      group.appendChild(select);\r\n    } else {\r\n      const input = document.createElement('input');\r\n      input.name = `field_${colIdx}`;\r\n      input.className = 'modal-input';\r\n      input.dataset.colIndex = String(colIdx);\r\n\r\n      if (tipoCol === 'number') {\r\n        input.type = 'number';\r\n        input.step = 'any';\r\n        input.value = valorInicial;\r\n        input.placeholder = `0.00`;\r\n      } else if (tipoCol === 'date') {\r\n        input.type = 'date';\r\n        input.value = formatearFechaExcel(valorInicial);\r\n      } else if (tipoCol === 'email') {\r\n        input.type = 'email';\r\n        input.value = valorInicial;\r\n        input.placeholder = `contacto@empresa.com`;\r\n      } else {\r\n        input.type = 'text';\r\n        input.value = valorInicial;\r\n        input.placeholder = esId ? `Folio ID (ej: ${generarSiguienteIdAuto(colIdx)})` : `Ingresar ${encabezado.toLowerCase()}...`;\r\n      }\r\n\r\n      group.appendChild(label);\r\n      group.appendChild(input);\r\n    }\r\n\r\n    DOM.dynamicFormFields.appendChild(group);\r\n  });\r\n}\r\n\r\nfunction marcarCampoInvalido(colIdx: number): void {\r\n  const inputEl = DOM.dynamicFormFields.querySelector(`[name=\"field_${colIdx}\"]`) as HTMLElement;\r\n  if (inputEl) {\r\n    inputEl.focus();\r\n    inputEl.style.borderColor = '#EF4444';\r\n    inputEl.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';\r\n  }\r\n}\r\n\r\n// ============================================================================\r\n// 7️⃣ SUPERPODER 5: ESCRITURA Y CRUD BIDIRECCIONAL EN EXCEL (WRITE-BACK)\r\n// ============================================================================\r\n\r\nasync function insertarFilaEnExcel(valoresFila: DatosFila): Promise<boolean> {\r\n  try {\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const table = context.workbook.tables.getItem(EstadoApp.nombreTablaActiva);\r\n      const rows = table.rows;\r\n      rows.load([\"count\"]);\r\n      await context.sync();\r\n\r\n      const rowCount = rows.count;\r\n      const sanitized = valoresFila.map(v => (v === undefined ? null : v));\r\n\r\n      // 1. Insertar la nueva fila con los valores proporcionados\r\n      const newRow = table.rows.add(null, [sanitized]);\r\n\r\n      // 2. Si la tabla ya tiene filas, asegurar que las columnas calculadas hereden la fórmula de la fila anterior\r\n      if (rowCount > 0) {\r\n        const prevRow = table.rows.getItemAt(rowCount - 1);\r\n        const prevRange = prevRow.getRange();\r\n        const newRange = newRow.getRange();\r\n\r\n        for (let colIdx = 0; colIdx < EstadoApp.encabezados.length; colIdx++) {\r\n          if (EstadoApp.esColumnaCalculada[colIdx]) {\r\n            const prevCell = prevRange.getCell(0, colIdx);\r\n            const newCell = newRange.getCell(0, colIdx);\r\n            newCell.copyFrom(prevCell, Excel.RangeCopyType.formulas);\r\n          }\r\n        }\r\n      }\r\n\r\n      await context.sync();\r\n\r\n      mostrarNotificacionToast(\"Registro agregado a Excel correctamente\", \"success\");\r\n      await cargarDatosTablaActiva(EstadoApp.nombreTablaActiva);\r\n    });\r\n    return true;\r\n  } catch (error: any) {\r\n    console.error(\"Error al insertar fila en Excel:\", error);\r\n    const detail = error ?.message || \"Validación rechazada por Excel\";\r\n    mostrarNotificacionToast(`⚠️ Error al guardar: ${detail}`, \"danger\");\r\n    return false;\r\n  }\r\n}\r\n\r\nasync function actualizarFilaEnExcel(rowIndex: number, valoresFila: DatosFila): Promise<boolean> {\r\n  try {\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const table = context.workbook.tables.getItem(EstadoApp.nombreTablaActiva);\r\n      const row = table.rows.getItemAt(rowIndex);\r\n      const rowRange = row.getRange();\r\n\r\n      // Actualizar únicamente las celdas no calculadas para no sobreescribir las fórmulas de Excel\r\n      for (let colIdx = 0; colIdx < EstadoApp.encabezados.length; colIdx++) {\r\n        if (!EstadoApp.esColumnaCalculada[colIdx]) {\r\n          const val = valoresFila[colIdx];\r\n          rowRange.getCell(0, colIdx).values = [[val === undefined ? null : val]];\r\n        }\r\n      }\r\n\r\n      await context.sync();\r\n\r\n      mostrarNotificacionToast(\"Registro actualizado en Excel\", \"success\");\r\n      await cargarDatosTablaActiva(EstadoApp.nombreTablaActiva);\r\n    });\r\n    return true;\r\n  } catch (error: any) {\r\n    console.error(\"Error al actualizar fila en Excel:\", error);\r\n    const detail = error ?.message || \"Validación rechazada por Excel\";\r\n    mostrarNotificacionToast(`⚠️ Error al actualizar: ${detail}`, \"danger\");\r\n    return false;\r\n  }\r\n}\r\n\r\nasync function eliminarFilaEnExcel(rowIndex: number): Promise<void> {\r\n  try {\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const table = context.workbook.tables.getItem(EstadoApp.nombreTablaActiva);\r\n      const row = table.rows.getItemAt(rowIndex);\r\n      row.delete();\r\n      await context.sync();\r\n\r\n      mostrarNotificacionToast(\"Registro eliminado de Excel\", \"success\");\r\n      await cargarDatosTablaActiva(EstadoApp.nombreTablaActiva);\r\n    });\r\n  } catch (error) {\r\n    console.error(\"Error al eliminar fila en Excel:\", error);\r\n    mostrarNotificacionToast(\"Error al eliminar registro\", \"danger\");\r\n  }\r\n}\r\n\r\nasync function procesarEnvioFormulario(e?: Event): Promise<void> {\r\n  if (e) e.preventDefault();\r\n\r\n  try {\r\n    DOM.dynamicFormFields.querySelectorAll('.modal-input').forEach((el) => {\r\n      const htmlEl = el as HTMLElement;\r\n      htmlEl.style.borderColor = '';\r\n      htmlEl.style.boxShadow = '';\r\n    });\r\n\r\n    const valoresFila: DatosFila = [];\r\n\r\n    for (let colIdx = 0; colIdx < EstadoApp.encabezados.length; colIdx++) {\r\n      const esFormula = EstadoApp.esColumnaCalculada[colIdx];\r\n      const tipoCol = EstadoApp.tiposColumna[colIdx];\r\n      const opciones = EstadoApp.opcionesColumna[colIdx];\r\n      const encabezado = EstadoApp.encabezados[colIdx];\r\n      const esId = esColumnaIdentificador(encabezado);\r\n\r\n      if (esFormula) {\r\n        valoresFila.push(null);\r\n      } else if (esId && EstadoApp.indiceFilaEnEdicion !== null) {\r\n        const origId = EstadoApp.filasDatos[EstadoApp.indiceFilaEnEdicion] ?.[colIdx];\r\n        valoresFila.push(origId !== undefined && origId !== null ? origId : '');\r\n      } else {\r\n        const inputEl = DOM.dynamicFormFields.querySelector(`[name=\"field_${colIdx}\"]`) as HTMLInputElement | HTMLSelectElement | null;\r\n        const rawVal = inputEl ? inputEl.value.trim() : '';\r\n\r\n        // Validación 1: Lista Desplegable\r\n        if (opciones && opciones.length > 0 && rawVal !== '') {\r\n          const isValidOption = opciones.some(opt => opt.toLowerCase() === rawVal.toLowerCase());\r\n          if (!isValidOption) {\r\n            mostrarNotificacionToast(`El valor para \"${encabezado}\" debe pertenecer a la lista`, \"danger\");\r\n            marcarCampoInvalido(colIdx);\r\n            return;\r\n          }\r\n        }\r\n\r\n        // Validación 2: Unicidad de ID\r\n        if (esId) {\r\n          if (rawVal === '') {\r\n            mostrarNotificacionToast(`El campo \"${encabezado}\" no puede estar vacío`, \"danger\");\r\n            marcarCampoInvalido(colIdx);\r\n            return;\r\n          }\r\n\r\n          const isDuplicate = EstadoApp.filasDatos.some((r, idx) => {\r\n            if (EstadoApp.indiceFilaEnEdicion !== null && idx === EstadoApp.indiceFilaEnEdicion) {\r\n              return false;\r\n            }\r\n            return String(r[colIdx] || '').trim().toLowerCase() === rawVal.toLowerCase();\r\n          });\r\n\r\n          if (isDuplicate) {\r\n            mostrarNotificacionToast(`El ID \"${rawVal}\" ya existe. Los IDs deben ser únicos.`, \"danger\");\r\n            marcarCampoInvalido(colIdx);\r\n            return;\r\n          }\r\n        }\r\n\r\n        // Validación 3: Formato Correo\r\n        if (tipoCol === 'email' && rawVal !== '') {\r\n          const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\r\n          if (!emailRegex.test(rawVal)) {\r\n            mostrarNotificacionToast(`El campo \"${encabezado}\" debe tener formato de correo válido`, \"danger\");\r\n            marcarCampoInvalido(colIdx);\r\n            return;\r\n          }\r\n        }\r\n\r\n        // Validación 4: Formato Numérico\r\n        if (tipoCol === 'number' && rawVal !== '') {\r\n          const num = Number(rawVal);\r\n          if (isNaN(num)) {\r\n            mostrarNotificacionToast(`El campo \"${encabezado}\" debe ser numérico`, \"danger\");\r\n            marcarCampoInvalido(colIdx);\r\n            return;\r\n          }\r\n          valoresFila.push(num);\r\n        } else {\r\n          valoresFila.push(rawVal);\r\n        }\r\n      }\r\n    }\r\n\r\n    mostrarNotificacionToast(\"Enviando datos a Excel...\", \"info\");\r\n\r\n    const btnSave = DOM.dynamicRecordForm.querySelector('button[type=\"submit\"]') as HTMLButtonElement;\r\n    if (btnSave) btnSave.disabled = true;\r\n\r\n    let success = false;\r\n    if (EstadoApp.indiceFilaEnEdicion === null) {\r\n      success = await insertarFilaEnExcel(valoresFila);\r\n    } else {\r\n      success = await actualizarFilaEnExcel(EstadoApp.indiceFilaEnEdicion, valoresFila);\r\n    }\r\n\r\n    if (btnSave) btnSave.disabled = false;\r\n    if (success) cerrarModalFormulario();\r\n  } catch (err: any) {\r\n    console.error(\"Error al procesar formulario:\", err);\r\n    mostrarNotificacionToast(`Error al procesar: ${err ?.message || err}`, \"danger\");\r\n  }\r\n}\r\n\r\n// ============================================================================\r\n// 8️⃣ SUPERPODER 6: GUARDAR COMO VISTA EJECUTIVA EN EXCEL\r\n// ============================================================================\r\n\r\n/**\r\n * Crea una nueva hoja y tabla oficial en Excel con encabezado y estilo ejecutivo.\r\n */\r\nasync function generarVistaEjecutivaExcel(nombreVista: string): Promise<void> {\r\n  try {\r\n    mostrarNotificacionToast(`Creando reporte ejecutivo \"${nombreVista}\"...`, \"info\");\r\n\r\n    await Excel.run(async (context: Excel.RequestContext) => {\r\n      const visibleHeaders = EstadoApp.indicesColumnasVisibles.map(i => EstadoApp.encabezados[i]);\r\n\r\n      const visibleRows = EstadoApp.indicesFiltrados.map(rowIdx => {\r\n        const row = EstadoApp.filasDatos[rowIdx];\r\n        return EstadoApp.indicesColumnasVisibles.map(colIdx => {\r\n          const val = row[colIdx];\r\n          return val === undefined ? null : val;\r\n        });\r\n      });\r\n\r\n      // Crear nueva hoja con color corporativo\r\n      const newSheet = context.workbook.worksheets.add(nombreVista);\r\n      newSheet.tabColor = \"#4F46E5\";\r\n\r\n      const nowStr = new Date().toLocaleString('es-MX', {\r\n        year: 'numeric', month: 'short', day: 'numeric',\r\n        hour: '2-digit', minute: '2-digit'\r\n      });\r\n      const filterInfo = EstadoApp.consultaBusquedaActiva ? `Filtro: \"${EstadoApp.consultaBusquedaActiva}\"` : 'Filtro: Ninguno (Todos)';\r\n      const sortInfo = EstadoApp.indiceColumnaOrden !== null\r\n        ? `Orden: ${EstadoApp.encabezados[EstadoApp.indiceColumnaOrden]} (${EstadoApp.direccionOrden.toUpperCase()})`\r\n        : 'Orden original';\r\n\r\n      // Fila 2: Título Ejecutivo\r\n      const titleCell = newSheet.getRange(\"B2\");\r\n      titleCell.values = [[`📊 REPORTE DE VISTA: ${nombreVista.toUpperCase()}`]];\r\n      titleCell.format.font.size = 14;\r\n      titleCell.format.font.bold = true;\r\n      titleCell.format.font.color = \"#0F172A\";\r\n\r\n      // Fila 3: Metadatos\r\n      const subtitleCell = newSheet.getRange(\"B3\");\r\n      subtitleCell.values = [[`Generado: ${nowStr}  |  Origen: ${EstadoApp.nombreTablaActiva}  |  ${filterInfo}  |  ${sortInfo}`]];\r\n      subtitleCell.format.font.size = 9;\r\n      subtitleCell.format.font.color = \"#64748B\";\r\n\r\n      // Fila 5: Tabla Oficial\r\n      const startRow = 4;\r\n      const startCol = 1;\r\n      const numRows = visibleRows.length > 0 ? visibleRows.length + 1 : 2;\r\n      const numCols = visibleHeaders.length;\r\n\r\n      const targetRange = newSheet.getRangeByIndexes(startRow, startCol, numRows, numCols);\r\n      const dataMatrix = [\r\n        visibleHeaders,\r\n        ...(visibleRows.length > 0 ? visibleRows : [visibleHeaders.map(() => '')])\r\n      ];\r\n      targetRange.values = dataMatrix;\r\n\r\n      const newTable = newSheet.tables.add(targetRange, true);\r\n      newTable.name = nombreVista;\r\n      newTable.style = \"TableStyleMedium9\";\r\n\r\n      newSheet.getUsedRange().format.autofitColumns();\r\n      newSheet.activate();\r\n\r\n      await context.sync();\r\n\r\n      mostrarNotificacionToast(`✅ Vista \"${nombreVista}\" creada con éxito`, \"success\");\r\n\r\n      await cargarTablasDelLibro();\r\n      cambiarTablaActiva(nombreVista);\r\n    });\r\n  } catch (error: any) {\r\n    console.error(\"Error al guardar vista en Excel:\", error);\r\n    const msg = error ?.message || \"Error al crear la hoja en Excel\";\r\n    mostrarNotificacionToast(`⚠️ Error al guardar vista: ${msg}`, \"danger\");\r\n  }\r\n}\r\n\r\n// ============================================================================\r\n// 9️⃣ MODALES AUXILIARES: FICHA 360°, CONFIRMACIÓN Y VISTA\r\n// ============================================================================\r\n\r\nfunction abrirModalFicha360(rowIndex: number): void {\r\n  EstadoApp.indiceFilaSeleccionada = rowIndex;\r\n  const row = EstadoApp.filasDatos[rowIndex];\r\n  const primaryTitle = row[0] !== undefined && row[0] !== null ? String(row[0]) : `Registro #${rowIndex + 1}`;\r\n\r\n  if (DOM.modalDetailTitle) DOM.modalDetailTitle.textContent = `${primaryTitle} • Detalle 360°`;\r\n  if (DOM.detailContent) {\r\n    DOM.detailContent.innerHTML = '';\r\n    EstadoApp.encabezados.forEach((encabezado: string, colIdx: number) => {\r\n      const val = row[colIdx];\r\n      const tipoCol = EstadoApp.tiposColumna[colIdx];\r\n      const formattedVal = formatearValorCelda(val, tipoCol);\r\n\r\n      const item = document.createElement('div');\r\n      item.className = 'detail-item';\r\n      item.innerHTML = `\r\n        <span class=\"detail-key\">${encabezado}</span>\r\n        <span class=\"detail-val\">${formattedVal}</span>\r\n      `;\r\n      DOM.detailContent.appendChild(item);\r\n    });\r\n  }\r\n\r\n  DOM.modalDetail ?.classList.remove('hidden');\r\n}\r\n\r\nfunction cerrarModalFicha360(): void {\r\n  DOM.modalDetail ?.classList.add('hidden');\r\n  EstadoApp.indiceFilaSeleccionada = null;\r\n}\r\n\r\nfunction abrirModalConfirmacionEliminar(rowIndex: number): void {\r\n  EstadoApp.indiceFilaAEliminar = rowIndex;\r\n  DOM.modalConfirm ?.classList.remove('hidden');\r\n}\r\n\r\nfunction cerrarModalConfirmacionEliminar(): void {\r\n  DOM.modalConfirm ?.classList.add('hidden');\r\n  EstadoApp.indiceFilaAEliminar = null;\r\n}\r\n\r\nfunction confirmarEliminarRegistro(): void {\r\n  if (EstadoApp.indiceFilaAEliminar !== null) {\r\n    const idx = EstadoApp.indiceFilaAEliminar;\r\n    cerrarModalConfirmacionEliminar();\r\n    eliminarFilaEnExcel(idx);\r\n  }\r\n}\r\n\r\nfunction generarNombreVistaPorDefecto(): string {\r\n  const now = new Date();\r\n  const pad = (n: number) => String(n).padStart(2, '0');\r\n  const dd = pad(now.getDate());\r\n  const mm = pad(now.getMonth() + 1);\r\n  const yy = String(now.getFullYear()).slice(-2);\r\n  const hh = pad(now.getHours());\r\n  const min = pad(now.getMinutes());\r\n  const ss = pad(now.getSeconds());\r\n  return `Vista_${dd}${mm}${yy}${hh}${min}${ss}`;\r\n}\r\n\r\nfunction abrirModalGuardarVista(): void {\r\n  if (!DOM.inputViewName || !DOM.saveViewSummaryBox) return;\r\n\r\n  const defaultName = generarNombreVistaPorDefecto();\r\n  DOM.inputViewName.value = defaultName;\r\n  DOM.inputViewName.style.borderColor = '';\r\n\r\n  const totalFiltered = EstadoApp.indicesFiltrados.length;\r\n  const visibleCols = EstadoApp.indicesColumnasVisibles.length;\r\n  const totalCols = EstadoApp.encabezados.length;\r\n  const searchFilter = EstadoApp.consultaBusquedaActiva ? `\"${EstadoApp.consultaBusquedaActiva}\"` : 'Ninguno (Todos)';\r\n\r\n  DOM.saveViewSummaryBox.innerHTML = `\r\n    <div class=\"view-stat-row\">\r\n      <span class=\"view-stat-label\">Tabla Origen:</span>\r\n      <span class=\"view-stat-val\">${EstadoApp.nombreTablaActiva}</span>\r\n    </div>\r\n    <div class=\"view-stat-row\">\r\n      <span class=\"view-stat-label\">Registros a Exportar:</span>\r\n      <span class=\"view-stat-val\">${totalFiltered} filas</span>\r\n    </div>\r\n    <div class=\"view-stat-row\">\r\n      <span class=\"view-stat-label\">Columnas Incluidas:</span>\r\n      <span class=\"view-stat-val\">${visibleCols} de ${totalCols} cols</span>\r\n    </div>\r\n    <div class=\"view-stat-row\">\r\n      <span class=\"view-stat-label\">Filtro de Búsqueda:</span>\r\n      <span class=\"view-stat-val\">${searchFilter}</span>\r\n    </div>\r\n  `;\r\n\r\n  DOM.modalSaveView ?.classList.remove('hidden');\r\n  setTimeout(() => DOM.inputViewName.focus(), 100);\r\n}\r\n\r\nfunction cerrarModalGuardarVista(): void {\r\n  DOM.modalSaveView ?.classList.add('hidden');\r\n}\r\n\r\nasync function confirmarGuardarVista(): Promise<void> {\r\n  const rawName = (DOM.inputViewName ?.value || '').trim();\r\n\r\n  if (!rawName) {\r\n    mostrarNotificacionToast(\"Debes ingresar un nombre para la vista\", \"danger\");\r\n    if (DOM.inputViewName) DOM.inputViewName.focus();\r\n    return;\r\n  }\r\n\r\n  const invalidCharsRegex = /[\\\\/?*:[\\]]/;\r\n  if (invalidCharsRegex.test(rawName)) {\r\n    mostrarNotificacionToast('El nombre no puede contener: \\\\ / ? * : [ ]', 'danger');\r\n    if (DOM.inputViewName) DOM.inputViewName.focus();\r\n    return;\r\n  }\r\n\r\n  if (rawName.length > 31) {\r\n    mostrarNotificacionToast('El nombre no puede exceder 31 caracteres', 'danger');\r\n    if (DOM.inputViewName) DOM.inputViewName.focus();\r\n    return;\r\n  }\r\n\r\n  if (DOM.btnConfirmSaveView) DOM.btnConfirmSaveView.disabled = true;\r\n\r\n  cerrarModalGuardarVista();\r\n  await generarVistaEjecutivaExcel(rawName);\r\n\r\n  if (DOM.btnConfirmSaveView) DOM.btnConfirmSaveView.disabled = false;\r\n}\r\n\r\n// ============================================================================\r\n// 🔟 FORMATEO, RENDERIZADO TABULAR Y UTILIDADES UI\r\n// ============================================================================\r\n\r\nfunction formatearFechaExcel(val: ValorCelda): string {\r\n  if (val === null || val === undefined || val === '') return '';\r\n\r\n  if (typeof val === 'number') {\r\n    if (val > 1000 && val < 100000) {\r\n      const date = new Date(Math.round((val - 25569) * 86400 * 1000));\r\n      const y = date.getUTCFullYear();\r\n      const m = String(date.getUTCMonth() + 1).padStart(2, '0');\r\n      const d = String(date.getUTCDate()).padStart(2, '0');\r\n      return `${y}-${m}-${d}`;\r\n    }\r\n    return String(val);\r\n  }\r\n\r\n  const str = String(val).trim();\r\n  if (str.includes('T')) return str.split('T')[0];\r\n  if (str.includes(' ')) {\r\n    const part = str.split(' ')[0];\r\n    if (/^\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}/.test(part) || /^\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}/.test(part)) {\r\n      return formatearFechaExcel(part);\r\n    }\r\n  }\r\n\r\n  const numVal = Number(str);\r\n  if (!isNaN(numVal) && numVal > 1000 && numVal < 100000 && !str.includes('-') && !str.includes('/')) {\r\n    const date = new Date(Math.round((numVal - 25569) * 86400 * 1000));\r\n    const y = date.getUTCFullYear();\r\n    const m = String(date.getUTCMonth() + 1).padStart(2, '0');\r\n    const d = String(date.getUTCDate()).padStart(2, '0');\r\n    return `${y}-${m}-${d}`;\r\n  }\r\n\r\n  const matchISO = str.match(/^(\\d{4})[-/](\\d{1,2})[-/](\\d{1,2})/);\r\n  if (matchISO) return `${matchISO[1]}-${matchISO[2].padStart(2, '0')}-${matchISO[3].padStart(2, '0')}`;\r\n\r\n  const matchLat = str.match(/^(\\d{1,2})[-/](\\d{1,2})[-/](\\d{4})/);\r\n  if (matchLat) return `${matchLat[3]}-${matchLat[2].padStart(2, '0')}-${matchLat[1].padStart(2, '0')}`;\r\n\r\n  return str;\r\n}\r\n\r\nfunction inferirTiposDeColumna(): void {\r\n  const colCount = EstadoApp.encabezados.length;\r\n  EstadoApp.tiposColumna = new Array(colCount).fill('text');\r\n  EstadoApp.esColumnaCalculada = new Array(colCount).fill(false);\r\n\r\n  for (let c = 0; c < colCount; c++) {\r\n    const headerName = (EstadoApp.encabezados[c] || '').toLowerCase();\r\n    const isHeaderDateHint = headerName.includes('fecha') || headerName.includes('date') || headerName.includes('fec') || headerName.includes('emision');\r\n\r\n    const hasFormulas = EstadoApp.datosFormulas.some(row => {\r\n      const cellFormula = row[c];\r\n      return typeof cellFormula === 'string' && cellFormula.startsWith('=');\r\n    });\r\n    EstadoApp.esColumnaCalculada[c] = hasFormulas;\r\n\r\n    let isExcelDateFormat = false;\r\n    if (EstadoApp.datosFormatosNumero && EstadoApp.datosFormatosNumero.length > 0) {\r\n      const formatSamples = EstadoApp.datosFormatosNumero.map(r => String(r[c] || '')).filter(Boolean);\r\n      isExcelDateFormat = formatSamples.some(fmt => {\r\n        const lower = fmt.toLowerCase();\r\n        return (lower.includes('yy') || lower.includes('mm') || lower.includes('dd') || lower.includes('aaaa')) && !lower.includes('general');\r\n      });\r\n    }\r\n\r\n    const nonNullValues = EstadoApp.filasDatos\r\n      .map(row => row[c])\r\n      .filter(val => val !== null && val !== undefined && String(val).trim() !== '');\r\n\r\n    if (nonNullValues.length === 0) {\r\n      EstadoApp.tiposColumna[c] = (isExcelDateFormat || isHeaderDateHint) ? 'date' : 'text';\r\n      continue;\r\n    }\r\n\r\n    let numberCount = 0;\r\n    let dateCount = 0;\r\n    let emailCount = 0;\r\n    const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\r\n\r\n    for (const val of nonNullValues) {\r\n      if (typeof val === 'number') {\r\n        if ((isExcelDateFormat || isHeaderDateHint) && val > 10000 && val < 90000) {\r\n          dateCount++;\r\n        } else {\r\n          numberCount++;\r\n        }\r\n      } else if (typeof val === 'string') {\r\n        const trimmed = val.trim();\r\n        if ((isExcelDateFormat || isHeaderDateHint) && !isNaN(Number(trimmed)) && Number(trimmed) > 10000 && Number(trimmed) < 90000) {\r\n          dateCount++;\r\n        } else if (emailRegex.test(trimmed)) {\r\n          emailCount++;\r\n        } else if (trimmed.includes('T') && !isNaN(Date.parse(trimmed))) {\r\n          dateCount++;\r\n        } else if (/^\\d{4}[-/]\\d{1,2}[-/]\\d{1,2}/.test(trimmed) || /^\\d{1,2}[-/]\\d{1,2}[-/]\\d{4}/.test(trimmed)) {\r\n          dateCount++;\r\n        } else if (!isNaN(Number(trimmed)) && trimmed !== '') {\r\n          numberCount++;\r\n        }\r\n      }\r\n    }\r\n\r\n    const total = nonNullValues.length;\r\n    if (isExcelDateFormat || isHeaderDateHint || dateCount / total >= 0.5) {\r\n      EstadoApp.tiposColumna[c] = 'date';\r\n    } else if (emailCount / total >= 0.5) {\r\n      EstadoApp.tiposColumna[c] = 'email';\r\n    } else if (numberCount / total >= 0.6) {\r\n      EstadoApp.tiposColumna[c] = 'number';\r\n    } else {\r\n      EstadoApp.tiposColumna[c] = 'text';\r\n    }\r\n  }\r\n}\r\n\r\nfunction formatearValorCelda(val: ValorCelda, tipo: TipoColumna, query: string = ''): string {\r\n  if (val === null || val === undefined || val === '') return '<span style=\"color: var(--text-muted);\">-</span>';\r\n\r\n  if (tipo === 'email' && val) {\r\n    const emailStr = String(val);\r\n    const highlightedVal = query ? resaltarCoincidencia(emailStr, query) : emailStr;\r\n    return `<a href=\"mailto:${emailStr}\" class=\"email-link\" onclick=\"event.stopPropagation()\">${highlightedVal}</a>`;\r\n  }\r\n\r\n  if (tipo === 'date') {\r\n    const dateStr = formatearFechaExcel(val);\r\n    return query ? resaltarCoincidencia(dateStr, query) : dateStr;\r\n  }\r\n\r\n  if (tipo === 'number' && typeof val === 'number') {\r\n    const formatted = val.toLocaleString('es-MX');\r\n    return query ? resaltarCoincidencia(formatted, query) : formatted;\r\n  }\r\n\r\n  const strVal = String(val);\r\n  return query ? resaltarCoincidencia(strVal, query) : strVal;\r\n}\r\n\r\nfunction renderizarVistaTabular(): void {\r\n  if (!DOM.recordsContainer) return;\r\n\r\n  if (EstadoApp.filasDatos.length === 0) {\r\n    renderizarEstadoVacio(\"Esta tabla no contiene registros.\");\r\n    return;\r\n  }\r\n\r\n  if (EstadoApp.indicesFiltrados.length === 0) {\r\n    renderizarEstadoVacio(`No se encontraron coincidencias para \"${EstadoApp.consultaBusquedaActiva}\"`);\r\n    return;\r\n  }\r\n\r\n  DOM.recordsContainer.innerHTML = '';\r\n\r\n  const wrapper = document.createElement('div');\r\n  wrapper.className = 'table-responsive-wrapper';\r\n\r\n  const table = document.createElement('table');\r\n  table.className = 'modern-data-table';\r\n\r\n  const thead = document.createElement('thead');\r\n  const trHead = document.createElement('tr');\r\n\r\n  EstadoApp.encabezados.forEach((encabezado: string, colIdx: number) => {\r\n    if (!EstadoApp.indicesColumnasVisibles.includes(colIdx)) return;\r\n\r\n    const th = document.createElement('th');\r\n    th.className = 'th-sortable';\r\n    if (EstadoApp.tiposColumna[colIdx] === 'number') th.classList.add('col-num-header');\r\n\r\n    let sortIconHtml = '<span class=\"sort-idle-icon\">⇅</span>';\r\n    if (EstadoApp.indiceColumnaOrden === colIdx) {\r\n      const arrow = EstadoApp.direccionOrden === 'asc' ? '▲' : '▼';\r\n      sortIconHtml = `<span class=\"sort-icon active\">${arrow}</span>`;\r\n    }\r\n\r\n    th.innerHTML = `\r\n      <div class=\"th-content\">\r\n        <span>${encabezado}</span>\r\n        ${sortIconHtml}\r\n      </div>\r\n    `;\r\n\r\n    th.title = `Ordenar por ${encabezado}`;\r\n    th.addEventListener('click', () => alternarOrdenColumna(colIdx));\r\n    trHead.appendChild(th);\r\n  });\r\n\r\n  const thActions = document.createElement('th');\r\n  thActions.className = 'th-actions';\r\n  thActions.textContent = 'Acciones';\r\n  trHead.appendChild(thActions);\r\n\r\n  thead.appendChild(trHead);\r\n  table.appendChild(thead);\r\n\r\n  const tbody = document.createElement('tbody');\r\n\r\n  EstadoApp.indicesFiltrados.forEach((originalRowIndex: number) => {\r\n    const row = EstadoApp.filasDatos[originalRowIndex];\r\n    const tr = document.createElement('tr');\r\n\r\n    if (EstadoApp.indiceFilaSeleccionada === originalRowIndex) {\r\n      tr.classList.add('selected-row');\r\n    }\r\n\r\n    EstadoApp.encabezados.forEach((_, colIdx: number) => {\r\n      if (!EstadoApp.indicesColumnasVisibles.includes(colIdx)) return;\r\n\r\n      const td = document.createElement('td');\r\n      const val = row[colIdx];\r\n      const tipoCol = EstadoApp.tiposColumna[colIdx];\r\n      const esId = esColumnaIdentificador(EstadoApp.encabezados[colIdx]);\r\n\r\n      if (colIdx === 0 || esId) {\r\n        td.classList.add('col-primary');\r\n        if (val) {\r\n          td.title = `ID: ${val} (Clic para copiar)`;\r\n          td.style.cursor = 'pointer';\r\n          td.addEventListener('click', (e: MouseEvent) => {\r\n            e.stopPropagation();\r\n            if (navigator.clipboard) {\r\n              navigator.clipboard.writeText(String(val)).then(() => {\r\n                mostrarNotificacionToast(`📋 ID \"${val}\" copiado al portapapeles`, 'info');\r\n              });\r\n            }\r\n          });\r\n        }\r\n      }\r\n      if (tipoCol === 'number') td.classList.add('col-number');\r\n\r\n      td.innerHTML = formatearValorCelda(val, tipoCol, EstadoApp.consultaBusquedaActiva);\r\n      tr.appendChild(td);\r\n    });\r\n\r\n    const tdActions = document.createElement('td');\r\n    tdActions.className = 'td-actions';\r\n    tdActions.innerHTML = `\r\n      <div class=\"table-action-btns\">\r\n        <button class=\"action-icon-btn view-btn\" title=\"Ver ficha 360°\" data-index=\"${originalRowIndex}\">👁️</button>\r\n        <button class=\"action-icon-btn edit-btn\" title=\"Editar registro\" data-index=\"${originalRowIndex}\">✏️</button>\r\n        <button class=\"action-icon-btn delete-btn\" title=\"Eliminar registro\" data-index=\"${originalRowIndex}\">🗑️</button>\r\n      </div>\r\n    `;\r\n\r\n    const btnView = tdActions.querySelector('.view-btn') as HTMLButtonElement;\r\n    const btnEdit = tdActions.querySelector('.edit-btn') as HTMLButtonElement;\r\n    const btnDel = tdActions.querySelector('.delete-btn') as HTMLButtonElement;\r\n\r\n    btnView ?.addEventListener('click', (e: MouseEvent) => {\r\n      e.stopPropagation();\r\n      abrirModalFicha360(originalRowIndex);\r\n    });\r\n\r\n    btnEdit ?.addEventListener('click', (e: MouseEvent) => {\r\n      e.stopPropagation();\r\n      abrirModalEditarRegistro(originalRowIndex);\r\n    });\r\n\r\n    btnDel ?.addEventListener('click', (e: MouseEvent) => {\r\n      e.stopPropagation();\r\n      abrirModalConfirmacionEliminar(originalRowIndex);\r\n    });\r\n\r\n    tr.appendChild(tdActions);\r\n\r\n    tr.addEventListener('click', () => {\r\n      tbody.querySelectorAll('tr').forEach((r: HTMLTableRowElement) => r.classList.remove('selected-row'));\r\n      tr.classList.add('selected-row');\r\n      EstadoApp.indiceFilaSeleccionada = originalRowIndex;\r\n    });\r\n\r\n    tr.addEventListener('dblclick', () => {\r\n      abrirModalFicha360(originalRowIndex);\r\n    });\r\n\r\n    tbody.appendChild(tr);\r\n  });\r\n\r\n  table.appendChild(tbody);\r\n  wrapper.appendChild(table);\r\n  DOM.recordsContainer.appendChild(wrapper);\r\n}\r\n\r\nfunction actualizarContador(): void {\r\n  if (!DOM.counterText) return;\r\n  const showing = EstadoApp.indicesFiltrados.length;\r\n  const total = EstadoApp.filasDatos.length;\r\n  const visibleCols = EstadoApp.indicesColumnasVisibles.length;\r\n  const totalCols = EstadoApp.encabezados.length;\r\n  DOM.counterText.textContent = `Mostrando ${showing} de ${total} registros • ${visibleCols}/${totalCols} cols`;\r\n}\r\n\r\nfunction mostrarEsqueletosDeCarga(): void {\r\n  if (!DOM.recordsContainer) return;\r\n  DOM.recordsContainer.innerHTML = `\r\n    <div class=\"skeleton-card\"></div>\r\n    <div class=\"skeleton-card\"></div>\r\n    <div class=\"skeleton-card\"></div>\r\n  `;\r\n}\r\n\r\nfunction renderizarEstadoVacio(mensaje: string): void {\r\n  if (!DOM.recordsContainer) return;\r\n  DOM.recordsContainer.innerHTML = `\r\n    <div class=\"empty-state\">\r\n      <svg width=\"40\" height=\"40\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.5\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.35-4.35\"/></svg>\r\n      <p>${mensaje}</p>\r\n    </div>\r\n  `;\r\n}\r\n\r\nfunction mostrarNotificacionToast(mensaje: string, tipo: TipoNotificacion = 'info'): void {\r\n  if (!DOM.toastContainer) return;\r\n  const toast = document.createElement('div');\r\n  toast.className = 'toast';\r\n\r\n  const icon = tipo === 'success' ? '✅' : tipo === 'danger' ? '❌' : 'ℹ️';\r\n  toast.innerHTML = `<span>${icon}</span> <span>${mensaje}</span>`;\r\n\r\n  DOM.toastContainer.appendChild(toast);\r\n\r\n  setTimeout(() => {\r\n    toast.style.opacity = '0';\r\n    toast.style.transform = 'translateY(10px)';\r\n    toast.style.transition = 'all 0.3s ease';\r\n    setTimeout(() => toast.remove(), 300);\r\n  }, 2600);\r\n}\r\n"
+  language: typescript
+template:
+  content: "<div id=\"app\" class=\"app-container\">\r\n\r\n\t<!-- HEADER & BARRA DE NAVEGACIÓN -->\r\n\t<header class=\"app-header\">\r\n\t\t<div class=\"brand-badge\">\r\n\t\t\t<span class=\"bolt-icon\">⚡</span>\r\n\t\t\t<div>\r\n\t\t\t\t<h1 class=\"brand-title\">Universal Table Manager</h1>\r\n\t\t\t\t<p class=\"brand-subtitle\">Excel 365 • Interactive Web App</p>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\t\t<div class=\"header-actions\">\r\n\t\t\t<button id=\"btnRefreshTables\" class=\"icon-btn\" title=\"Detectar y refrescar tablas del libro\">\r\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67\"/></svg>\r\n      </button>\r\n\t\t</div>\r\n\t</header>\r\n\r\n\t<!-- PANEL DE CONTROL PRINCIPAL -->\r\n\t<section class=\"control-panel\">\r\n\t\t<!-- Selector de Tabla Origen -->\r\n\t\t<div class=\"form-group-compact\">\r\n\t\t\t<label for=\"selectTables\" class=\"control-label\">\r\n        <svg width=\"14\" height=\"14\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M3 3h18v18H3zM3 9h18M9 21V9\"/></svg>\r\n        Tabla de Origen:\r\n      </label>\r\n\t\t\t<div class=\"select-wrapper\">\r\n\t\t\t\t<select id=\"selectTables\" class=\"custom-select\">\r\n          <option value=\"\" disabled selected>Cargando tablas...</option>\r\n        </select>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\r\n\t\t<!-- Buscador Global y Botón Nuevo -->\r\n\t\t<div class=\"search-action-row\">\r\n\t\t\t<div class=\"search-wrapper\">\r\n\t\t\t\t<svg class=\"search-icon\" width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\"\r\n\t\t\t\t\tstroke-width=\"2.5\">\r\n\t\t\t\t\t<circle cx=\"11\" cy=\"11\" r=\"8\" />\r\n\t\t\t\t\t<path d=\"m21 21-4.35-4.35\" /></svg>\r\n\t\t\t\t<input type=\"text\" id=\"inputSearch\" class=\"search-input\" placeholder=\"Buscar en cualquier columna...\" autocomplete=\"off\">\r\n\t\t\t\t<button id=\"btnClearSearch\" class=\"clear-btn hidden\" title=\"Limpiar búsqueda\">&times;</button>\r\n\t\t\t</div>\r\n\t\t\t<button id=\"btnNewRecord\" class=\"btn-primary\" title=\"Crear nuevo registro\">\r\n        <svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M12 5v14M5 12h14\"/></svg>\r\n        <span>Nuevo</span>\r\n      </button>\r\n\t\t</div>\r\n\t</section>\r\n\r\n\t<!-- RESUMEN / CONTADOR EN VIVO Y SELECTOR DE COLUMNAS -->\r\n\t<div class=\"records-summary\">\r\n\t\t<div class=\"summary-left\">\r\n\t\t\t<span id=\"counterText\" class=\"counter-badge\">Detectando datos...</span>\r\n\t\t\t<span id=\"activeTableBadge\" class=\"table-tag\">--</span>\r\n\t\t</div>\r\n\r\n\t\t<div class=\"summary-actions-right\">\r\n\t\t\t<!-- Botón Guardar Vista -->\r\n\t\t\t<button type=\"button\" id=\"btnOpenSaveView\" class=\"btn-picker btn-save-view\" title=\"Guardar vista actual como nueva tabla y pestaña en Excel\">\r\n        <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><path d=\"M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z\"/><polyline points=\"17 21 17 13 7 13 7 21\"/><polyline points=\"7 3 7 8 15 8\"/></svg>\r\n        <span>Guardar vista</span>\r\n      </button>\r\n\r\n\t\t\t<!-- Selector de Columnas Popover -->\r\n\t\t\t<div class=\"columns-picker-wrapper\">\r\n\t\t\t\t<button type=\"button\" id=\"btnToggleColumnsPicker\" class=\"btn-picker\" title=\"Personalizar columnas visibles\">\r\n          <svg width=\"12\" height=\"12\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4m6-18h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4m-3-18v18\"/></svg>\r\n          <span id=\"columnsPickerLabel\">Columnas</span>\r\n          <span class=\"picker-chevron\">▾</span>\r\n        </button>\r\n\r\n\t\t\t\t<div id=\"columnsDropdown\" class=\"columns-dropdown hidden\">\r\n\t\t\t\t\t<div class=\"dropdown-header\">\r\n\t\t\t\t\t\t<span class=\"dropdown-title\">👁️ Columnas</span>\r\n\t\t\t\t\t\t<button id=\"btnToggleAllColumns\" class=\"btn-link-action\" type=\"button\">Quitar todo</button>\r\n\t\t\t\t\t</div>\r\n\t\t\t\t\t<div id=\"columnsListContainer\" class=\"columns-list\">\r\n\t\t\t\t\t\t<!-- Checkboxes de columnas dinámicas -->\r\n\t\t\t\t\t</div>\r\n\t\t\t\t</div>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\t</div>\r\n\r\n\t<!-- CONTENEDOR DE REGISTROS (VISTA TABULAR MODERNA CON SCROLL AUTOMÁTICO) -->\r\n\t<main id=\"recordsContainer\" class=\"table-scroll-area\">\r\n\t\t<div class=\"skeleton-card\"></div>\r\n\t\t<div class=\"skeleton-card\"></div>\r\n\t\t<div class=\"skeleton-card\"></div>\r\n\t</main>\r\n\r\n\t<!-- MODAL 1: FORMULARIO DINÁMICO (CREAR / EDITAR) -->\r\n\t<div id=\"modalForm\" class=\"modal-overlay hidden\">\r\n\t\t<div class=\"modal-card\">\r\n\t\t\t<div class=\"modal-header\">\r\n\t\t\t\t<div class=\"modal-title-group\">\r\n\t\t\t\t\t<span id=\"modalFormIcon\" class=\"modal-icon\">➕</span>\r\n\t\t\t\t\t<h2 id=\"modalFormTitle\" class=\"modal-title\">Nuevo Registro</h2>\r\n\t\t\t\t</div>\r\n\t\t\t\t<button id=\"btnCloseModalForm\" class=\"close-btn\">&times;</button>\r\n\t\t\t</div>\r\n\t\t\t<form id=\"dynamicRecordForm\" class=\"modal-body dynamic-form\">\r\n\t\t\t\t<div id=\"dynamicFormFields\" class=\"form-fields-container\">\r\n\t\t\t\t\t<!-- Campos generados dinámicamente -->\r\n\t\t\t\t</div>\r\n\t\t\t\t<div class=\"modal-footer\">\r\n\t\t\t\t\t<button type=\"button\" id=\"btnCancelForm\" class=\"btn-secondary\">Cancelar</button>\r\n\t\t\t\t\t<button type=\"submit\" id=\"btnSaveForm\" class=\"btn-primary\">\r\n            <span id=\"btnSaveText\">Guardar en Excel</span>\r\n          </button>\r\n\t\t\t\t</div>\r\n\t\t\t</form>\r\n\t\t</div>\r\n\t</div>\r\n\r\n\t<!-- MODAL 2: VISTA DE FICHA 360° (DETALLE) -->\r\n\t<div id=\"modalDetail\" class=\"modal-overlay hidden\">\r\n\t\t<div class=\"modal-card modal-detail-card\">\r\n\t\t\t<div class=\"modal-header\">\r\n\t\t\t\t<div class=\"modal-title-group\">\r\n\t\t\t\t\t<span class=\"modal-icon\">👁️</span>\r\n\t\t\t\t\t<h2 id=\"modalDetailTitle\" class=\"modal-title\">Ficha del Registro</h2>\r\n\t\t\t\t</div>\r\n\t\t\t\t<button id=\"btnCloseModalDetail\" class=\"close-btn\">&times;</button>\r\n\t\t\t</div>\r\n\t\t\t<div class=\"modal-body detail-modal-body\">\r\n\t\t\t\t<div id=\"detailContent\" class=\"detail-grid\">\r\n\t\t\t\t\t<!-- Campos renderizados con formato premium -->\r\n\t\t\t\t</div>\r\n\t\t\t\t<div class=\"modal-footer\">\r\n\t\t\t\t\t<button type=\"button\" id=\"btnCloseDetail\" class=\"btn-secondary\">Cerrar</button>\r\n\t\t\t\t\t<button type=\"button\" id=\"btnEditFromDetail\" class=\"btn-primary\">\r\n            <svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\"><path d=\"M12 20h9M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z\"/></svg>\r\n            <span>Editar Registro</span>\r\n          </button>\r\n\t\t\t\t</div>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\t</div>\r\n\r\n\t<!-- MODAL 3: CONFIRMACIÓN DE ELIMINACIÓN -->\r\n\t<div id=\"modalConfirm\" class=\"modal-overlay hidden\">\r\n\t\t<div class=\"modal-card modal-confirm-card\">\r\n\t\t\t<div class=\"confirm-content\">\r\n\t\t\t\t<div class=\"confirm-icon-box\">🗑️</div>\r\n\t\t\t\t<h3 class=\"confirm-title\">¿Eliminar registro?</h3>\r\n\t\t\t\t<p class=\"confirm-text\">Esta acción eliminará la fila seleccionada directamente de la tabla en Excel y\r\n\t\t\t\t\tno se puede deshacer.</p>\r\n\t\t\t\t<div class=\"modal-footer confirm-footer\">\r\n\t\t\t\t\t<button type=\"button\" id=\"btnCancelDelete\" class=\"btn-secondary\">Cancelar</button>\r\n\t\t\t\t\t<button type=\"button\" id=\"btnConfirmDelete\" class=\"btn-danger\">Eliminar</button>\r\n\t\t\t\t</div>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\t</div>\r\n\r\n\t<!-- MODAL 4: GUARDAR COMO VISTA EN EXCEL -->\r\n\t<div id=\"modalSaveView\" class=\"modal-overlay hidden\">\r\n\t\t<div class=\"modal-card\">\r\n\t\t\t<div class=\"modal-header\">\r\n\t\t\t\t<div class=\"modal-title-group\">\r\n\t\t\t\t\t<span class=\"modal-icon\">📑</span>\r\n\t\t\t\t\t<h2 class=\"modal-title\">Guardar como Vista</h2>\r\n\t\t\t\t</div>\r\n\t\t\t\t<button id=\"btnCloseModalSaveView\" class=\"close-btn\">&times;</button>\r\n\t\t\t</div>\r\n\t\t\t<div class=\"modal-body dynamic-form\">\r\n\t\t\t\t<p style=\"font-size: 11px; color: var(--text-secondary); line-height: 1.4;\">\r\n\t\t\t\t\tSe creará una <strong>nueva pestaña y tabla en Excel</strong> con el filtrado, orden y columnas\r\n\t\t\t\t\tvisibles actuales.\r\n\t\t\t\t</p>\r\n\t\t\t\t<div class=\"input-group\">\r\n\t\t\t\t\t<label class=\"input-label\" for=\"inputViewName\">\r\n            <span>Nombre de la Pestaña / Tabla</span>\r\n            <span class=\"formula-tag\" style=\"background:#E0E7FF; color:#4338CA;\">Excel 365</span>\r\n          </label>\r\n\t\t\t\t\t<input type=\"text\" id=\"inputViewName\" class=\"modal-input\" placeholder=\"Vista_DDMMYYHHMMSS\" maxlength=\"30\" autocomplete=\"off\">\r\n        </div>\r\n\t\t\t\t\t<div id=\"saveViewSummaryBox\" class=\"view-summary-card\">\r\n\t\t\t\t\t\t<!-- Estadísticas en vivo de la vista a guardar -->\r\n\t\t\t\t\t</div>\r\n\t\t\t\t\t<div class=\"modal-footer\">\r\n\t\t\t\t\t\t<button type=\"button\" id=\"btnCancelSaveView\" class=\"btn-secondary\">Cancelar</button>\r\n\t\t\t\t\t\t<button type=\"button\" id=\"btnConfirmSaveView\" class=\"btn-primary\">\r\n            <svg width=\"13\" height=\"13\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.5\"><polyline points=\"20 6 9 17 4 12\"/></svg>\r\n            <span>Crear Pestaña en Excel</span>\r\n          </button>\r\n\t\t\t\t\t</div>\r\n\t\t\t\t</div>\r\n\t\t\t</div>\r\n\t\t</div>\r\n\r\n\t\t<!-- CONTENEDOR TOASTS -->\r\n\t\t<div id=\"toastContainer\" class=\"toast-container\"></div>\r\n\r\n\t</div>"
+  language: html
+style:
+  content: >
+    /*
+    ==========================================================================
+       UNIVERSAL TABLE MANAGER - SCRIPT LAB CSS TAB
+       (Pegar directamente en la pestaña CSS de Script Lab)
+       ========================================================================== */
+
+    @import
+    url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+
+    :root {
+      /* Paleta de Colores Corporativa */
+      --bg-app: #F8FAFC;
+      --bg-card: #FFFFFF;
+      --bg-subtle: #F1F5F9;
+      --border-light: #E2E8F0;
+      --border-focus: #6366F1;
+      
+      --text-primary: #0F172A;
+      --text-secondary: #475569;
+      --text-muted: #94A3B8;
+      --text-inverse: #FFFFFF;
+      
+      --primary: #4F46E5;
+      --primary-hover: #4338CA;
+      --primary-light: #EEF2FF;
+      
+      --success: #10B981;
+      --success-light: #ECFDF5;
+      --danger: #EF4444;
+      --danger-hover: #DC2626;
+      --danger-light: #FEF2F2;
+      --warning: #F59E0B;
+      --warning-light: #FFFBEB;
+      
+      /* Sombras y Radios */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-full: 9999px;
+      
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+      --shadow-modal: 0 20px 25px -5px rgba(15, 23, 42, 0.25), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+      
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+
+    /* Reset y Base para Task Pane */
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+
+    body, html {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      line-height: 1.45;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      height: 100%;
+      width: 100%;
+    }
+
+
+    .app-container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      padding: 10px;
+      gap: 8px;
+      min-width: 280px;
+    }
+
+
+    /*
+    ==========================================================================
+       1. HEADER & BRANDING
+       ========================================================================== */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-md);
+      color: var(--text-inverse);
+    }
+
+
+    .brand-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+
+    .bolt-icon {
+      font-size: 16px;
+      background: rgba(255, 255, 255, 0.1);
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+
+    .brand-title {
+      font-size: 12.5px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+
+    .brand-subtitle {
+      font-size: 9.5px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+
+    .icon-btn {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: var(--text-inverse);
+      width: 26px;
+      height: 26px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+
+    .icon-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      transform: rotate(45deg);
+    }
+
+
+    /*
+    ==========================================================================
+       2. PANEL DE CONTROL (SELECTORES Y BÚSQUEDA)
+       ========================================================================== */
+    .control-panel {
+      background: var(--bg-card);
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-light);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+
+    .form-group-compact {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+
+    .control-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+
+    .select-wrapper {
+      position: relative;
+    }
+
+
+    .custom-select {
+      width: 100%;
+      padding: 5px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-primary);
+      background-color: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      outline: none;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+
+    .custom-select:focus {
+      border-color: var(--border-focus);
+      background-color: #FFFFFF;
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+
+    .search-action-row {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+
+    .search-wrapper {
+      position: relative;
+      flex: 1;
+      display: flex;
+      align-items: center;
+    }
+
+
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+
+
+    .search-input {
+      width: 100%;
+      padding: 5px 24px 5px 26px;
+      font-size: 11.5px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-subtle);
+      color: var(--text-primary);
+      outline: none;
+      transition: var(--transition);
+    }
+
+
+    .search-input:focus {
+      background-color: #FFFFFF;
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+
+    .clear-btn {
+      position: absolute;
+      right: 6px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 15px;
+      cursor: pointer;
+      padding: 0 2px;
+    }
+
+
+    .clear-btn:hover {
+      color: var(--text-primary);
+    }
+
+
+    .clear-btn.hidden {
+      display: none;
+    }
+
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      padding: 5px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-inverse);
+      background-color: var(--primary);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+
+    .btn-primary:hover {
+      background-color: var(--primary-hover);
+      transform: translateY(-1px);
+    }
+
+
+    /*
+    ==========================================================================
+       3. RESUMEN Y CONTADOR EN VIVO
+       ========================================================================== */
+    .records-summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2px;
+      font-size: 10.5px;
+      position: relative;
+      z-index: 50;
+    }
+
+
+    .summary-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+
+    .counter-badge {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+
+    .table-tag {
+      font-size: 9.5px;
+      font-weight: 700;
+      background-color: var(--primary-light);
+      color: var(--primary);
+      padding: 1px 6px;
+      border-radius: var(--radius-full);
+    }
+
+
+    .summary-actions-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+
+    /* Botón Guardar Vista */
+
+    .btn-save-view {
+      color: #047857;
+      background-color: #ECFDF5;
+      border-color: #A7F3D0;
+    }
+
+
+    .btn-save-view:hover {
+      background-color: #D1FAE5;
+      border-color: #10B981;
+      color: #065F46;
+    }
+
+
+    /* Selector de Columnas Dropdown */
+
+    .columns-picker-wrapper {
+      position: relative;
+      z-index: 60;
+    }
+
+
+    .btn-picker {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 7px;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+
+    .btn-picker:hover {
+      background-color: var(--bg-subtle);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+
+
+    .picker-chevron {
+      font-size: 9px;
+      color: var(--text-muted);
+    }
+
+
+    .columns-dropdown {
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.25), 0 8px 16px -4px rgba(0, 0, 0, 0.15);
+      width: 210px;
+      max-height: 260px;
+      display: flex;
+      flex-direction: column;
+      z-index: 100;
+      animation: fadeIn 0.15s ease-out;
+    }
+
+
+    .columns-dropdown.hidden {
+      display: none;
+    }
+
+
+    .dropdown-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-light);
+      background: var(--bg-subtle);
+      border-top-left-radius: var(--radius-md);
+      border-top-right-radius: var(--radius-md);
+    }
+
+
+    .dropdown-title {
+      font-size: 10.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+
+    .btn-link-action {
+      background: none;
+      border: none;
+      color: var(--primary);
+      font-size: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: underline;
+    }
+
+
+    .btn-link-action:hover {
+      color: var(--primary-hover);
+    }
+
+
+    .columns-list {
+      padding: 4px;
+      overflow-y: auto;
+      max-height: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+
+    .column-checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 6px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      color: var(--text-primary);
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition);
+    }
+
+
+    .column-checkbox-item:hover {
+      background-color: var(--bg-subtle);
+    }
+
+
+    .column-checkbox-item.disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+
+    .column-checkbox-item input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--primary);
+      width: 13px;
+      height: 13px;
+    }
+
+
+    .column-checkbox-item span.col-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+
+    .id-lock-tag {
+      font-size: 8.5px;
+      font-weight: 700;
+      background: #F1F5F9;
+      color: #64748B;
+      padding: 1px 4px;
+      border-radius: 4px;
+    }
+
+
+    /*
+    ==========================================================================
+       4. ÁREA DE REGISTROS (VISTA TABULAR MODERNA SAAS)
+       ========================================================================== */
+    .table-scroll-area {
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-card);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
+      min-height: 0;
+    }
+
+
+    .table-responsive-wrapper {
+      flex: 1;
+      overflow-x: auto;
+      overflow-y: auto;
+      position: relative;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+
+
+    /* Scrollbar estilizado para Scroll Horizontal y Vertical */
+
+    .table-responsive-wrapper::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-track {
+      background: var(--bg-subtle);
+      border-radius: var(--radius-full);
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-thumb {
+      background: #CBD5E1;
+      border-radius: var(--radius-full);
+    }
+
+    .table-responsive-wrapper::-webkit-scrollbar-thumb:hover {
+      background: #94A3B8;
+    }
+
+
+    /* Tabla de Datos Moderna */
+
+    .modern-data-table {
+      width: 100%;
+      min-width: max-content;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 11px;
+      text-align: left;
+    }
+
+
+    /* Encabezados Sticky con Ordenamiento Power BI */
+
+    .modern-data-table thead th {
+      position: sticky;
+      top: 0;
+      background: #0F172A;
+      color: #FFFFFF;
+      font-weight: 700;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      padding: 7px 10px;
+      border-bottom: 2px solid #1E293B;
+      white-space: nowrap;
+      min-width: 90px;
+      z-index: 2;
+    }
+
+
+    .modern-data-table thead th.th-sortable {
+      cursor: pointer;
+      user-select: none;
+      transition: var(--transition);
+    }
+
+
+    .modern-data-table thead th.th-sortable:hover {
+      background: #1E293B;
+      color: #EEF2FF;
+    }
+
+
+    .th-content {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+
+    .modern-data-table thead th.col-num-header .th-content {
+      justify-content: flex-end;
+    }
+
+
+    .sort-icon {
+      font-size: 9.5px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+    }
+
+
+    .sort-icon.active {
+      color: #FCD34D;
+      font-weight: 800;
+    }
+
+
+    .sort-idle-icon {
+      color: #64748B;
+      opacity: 0;
+      transition: opacity 0.15s ease;
+      font-size: 10px;
+    }
+
+
+    .th-sortable:hover .sort-idle-icon {
+      opacity: 1;
+    }
+
+
+    /* Celdas del Cuerpo */
+
+    .modern-data-table tbody tr {
+      transition: var(--transition);
+      cursor: pointer;
+      border-bottom: 1px solid var(--bg-subtle);
+    }
+
+
+    .modern-data-table tbody tr:nth-child(even) {
+      background-color: #FAFAFC;
+    }
+
+
+    .modern-data-table tbody tr:hover {
+      background-color: #EEF2FF !important;
+    }
+
+
+    .modern-data-table tbody tr.selected-row {
+      background-color: #E0E7FF !important;
+    }
+
+
+    .modern-data-table tbody td {
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--border-light);
+      color: var(--text-primary);
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+
+
+    /* Tipos de alineación */
+
+    .modern-data-table td.col-number {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+    }
+
+
+    .modern-data-table td.col-primary {
+      font-weight: 700;
+      color: var(--primary);
+    }
+
+
+    /* Columna de Acciones Sticky a la Derecha */
+
+    .modern-data-table .th-actions,
+
+    .modern-data-table .td-actions {
+      position: sticky;
+      right: 0;
+      text-align: center;
+      width: 90px;
+      min-width: 90px;
+    }
+
+
+    .modern-data-table thead .th-actions {
+      background: #0B1120 !important;
+      color: #FFFFFF !important;
+      border-left: 1px solid #1E293B;
+      z-index: 4;
+    }
+
+
+    .modern-data-table tbody td.td-actions {
+      background-color: #FFFFFF;
+      border-left: 1px solid var(--border-light);
+      box-shadow: -3px 0 6px rgba(0, 0, 0, 0.04);
+      z-index: 3;
+      padding: 3px 5px;
+    }
+
+
+    .modern-data-table tbody tr:nth-child(even) td.td-actions {
+      background-color: #FAFAFC;
+    }
+
+
+    .modern-data-table tbody tr:hover td.td-actions {
+      background-color: #EEF2FF !important;
+    }
+
+
+    .modern-data-table tbody tr.selected-row td.td-actions {
+      background-color: #E0E7FF !important;
+    }
+
+
+    .table-action-btns {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+
+
+    .action-icon-btn {
+      background: #FFFFFF;
+      border: 1px solid var(--border-light);
+      color: var(--text-primary);
+      width: 22px;
+      height: 22px;
+      border-radius: var(--radius-sm);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 10.5px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+      transition: var(--transition);
+    }
+
+
+    .action-icon-btn:hover {
+      background: var(--primary-light);
+      border-color: var(--primary);
+      color: var(--primary);
+      transform: scale(1.12);
+    }
+
+
+    .action-icon-btn.delete-btn:hover {
+      background: var(--danger-light);
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+
+    /* Resaltado de Búsqueda Inteligente */
+
+    .search-highlight {
+      background-color: #FEF08A;
+      color: #78350F;
+      font-weight: 700;
+      padding: 0 2px;
+      border-radius: 3px;
+      box-shadow: 0 0 0 1px rgba(217, 119, 6, 0.15);
+    }
+
+
+    /* Enlaces de Correo Electrónico */
+
+    .email-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+    }
+
+    .email-link:hover {
+      text-decoration: underline;
+      color: var(--primary-hover);
+    }
+
+
+    /* Skeletons & Empty States */
+
+    .skeleton-card {
+      background: linear-gradient(90deg, #F1F5F9 25%, #E2E8F0 50%, #F1F5F9 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      height: 60px;
+      border-radius: var(--radius-md);
+      margin-bottom: 6px;
+    }
+
+
+    @keyframes shimmer {
+      0% { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+
+    .empty-state {
+      text-align: center;
+      padding: 24px 10px;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      margin-bottom: 6px;
+    }
+
+
+    /*
+    ==========================================================================
+       5. MODALES (FORMULARIO, DETALLE, CONFIRMACIÓN)
+       ========================================================================== */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+
+
+    .modal-overlay.hidden {
+      display: none;
+      opacity: 0;
+    }
+
+
+    .modal-card {
+      background: var(--bg-card);
+      width: 100%;
+      max-width: 340px;
+      max-height: 88vh;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-modal);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      animation: modalPop 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+
+    @keyframes modalPop {
+      0% { transform: scale(0.94); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      background-color: var(--bg-subtle);
+      border-bottom: 1px solid var(--border-light);
+    }
+
+
+    .modal-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+
+    .modal-icon {
+      font-size: 13px;
+    }
+
+
+    .modal-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+
+    .close-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      color: var(--text-muted);
+      cursor: pointer;
+      line-height: 1;
+      padding: 2px 4px;
+      border-radius: var(--radius-sm);
+    }
+
+
+    .close-btn:hover {
+      background: #E2E8F0;
+      color: var(--text-primary);
+    }
+
+
+    .modal-body {
+      padding: 12px 14px;
+      overflow-y: auto;
+      flex: 1;
+    }
+
+
+    .form-fields-container {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+
+    .input-label {
+      font-size: 10.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+
+    .formula-tag {
+      font-size: 8.5px;
+      font-weight: 700;
+      background-color: #FEF3C7;
+      color: #D97706;
+      padding: 1px 4px;
+      border-radius: var(--radius-sm);
+    }
+
+
+    .modal-input {
+      width: 100%;
+      padding: 5px 8px;
+      font-size: 11.5px;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      background-color: #FFFFFF;
+      color: var(--text-primary);
+      outline: none;
+      transition: var(--transition);
+    }
+
+
+    .modal-input:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 2px var(--primary-light);
+    }
+
+
+    .modal-input:disabled {
+      background-color: var(--bg-subtle);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 6px;
+      padding: 8px 12px;
+      background-color: var(--bg-subtle);
+      border-top: 1px solid var(--border-light);
+    }
+
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 10px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background-color: #FFFFFF;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+
+    .btn-secondary:hover {
+      background-color: var(--bg-subtle);
+      color: var(--text-primary);
+    }
+
+
+    /* Modal Detalle 360° */
+
+    .detail-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--bg-subtle);
+    }
+
+
+    .detail-key {
+      font-size: 9.5px;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+
+    .detail-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+
+    /* Modal Confirmación */
+
+    .modal-confirm-card {
+      max-width: 320px;
+    }
+
+
+    .confirm-content,
+
+    .modal-confirm {
+      text-align: center;
+      padding: 20px 16px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+
+    .confirm-icon-box,
+
+    .confirm-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background-color: var(--danger-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      margin-bottom: 10px;
+    }
+
+
+    .confirm-title {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+
+    .confirm-text {
+      font-size: 11.5px;
+      line-height: 1.45;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+
+    .confirm-footer {
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+
+
+    .btn-danger {
+      padding: 5px 12px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #FFFFFF;
+      background-color: var(--danger);
+      border: none;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+
+    .btn-danger:hover {
+      background-color: var(--danger-hover);
+    }
+
+
+    /*
+    ==========================================================================
+       6. NOTIFICACIONES TOAST
+       ========================================================================== */
+    .toast-container {
+      position: fixed;
+      bottom: 14px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 2000;
+      pointer-events: none;
+    }
+
+
+    .toast {
+      background: #0F172A;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      box-shadow: var(--shadow-lg);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      animation: toastSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      pointer-events: auto;
+    }
+
+
+    @keyframes toastSlide {
+      0% { transform: translateY(15px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+
+
+    /* Modal Guardar Vista Info Box */
+
+    .view-summary-card {
+      background: var(--bg-subtle);
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+    }
+
+
+    .view-stat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+
+    .view-stat-label {
+      color: var(--text-secondary);
+    }
+
+
+    .view-stat-val {
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+  language: css
+libraries: >-
+  https://appsforoffice.microsoft.com/lib/1/hosted/office.js
+
+  https://raw.githubusercontent.com/DefinitelyTyped/DefinitelyTyped/master/types/office-js/index.d.ts
