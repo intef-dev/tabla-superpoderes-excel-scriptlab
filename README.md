@@ -14,7 +14,7 @@
 
 Aprende a construir y utilizar este motor interactivo paso a paso en nuestro canal de YouTube:
 
-👉 **[Ver Video en YouTube - HAZ CLIC AQUÍ](https://www.youtube.com/watch?v=XXXXXXXXXXX&sub_confirmation=1)**
+👉 **[Ver Video en YouTube - HAZ CLIC AQUÍ](https://www.youtube.com/watch?v=_hARSYY-x4g&sub_confirmation=1)**
 
 > 🔔 *¡No olvides dejar tu Like, comentar tus dudas y suscribirte al canal con la campanita para no perderte futuros tutoriales y plantillas avanzadas!*
 
@@ -142,7 +142,7 @@ El repositorio incluye la plantilla oficial [`Plantilla_Superpoderes_Excel_Tabla
 
 Para más tutoriales, código abierto y automatizaciones avanzadas de Excel y Office.js:
 
-- 🎥 **YouTube:** [Suscríbete a Inteligencia Eficiente](https://www.youtube.com/watch?v=XXXXXXXXXXX&sub_confirmation=1)
+- 🎥 **YouTube:** [Suscríbete a Inteligencia Eficiente](https://www.youtube.com/watch?v=_hARSYY-x4g&sub_confirmation=1)
 - 📸 **Instagram:** [@inteligenciaeficiente](https://www.instagram.com/inteligenciaeficiente/)
 - 👤 **Facebook:** [Inteligencia Eficiente Oficial](https://www.facebook.com/InteligenciaEficiente/)
 - 🌐 **Sitio Web:** [inteficiente.com](https://inteficiente.com/)
